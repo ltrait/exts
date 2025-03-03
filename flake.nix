@@ -1,105 +1,35 @@
 {
-  description = "A full Rust flake";
+  description = "A very basic flake";
 
   inputs = {
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    flake-parts = {
-      url = "github:hercules-ci/flake-parts";
-      inputs.nixpkgs-lib.follows = "nixpkgs";
-    };
-
-    treefmt-nix.url = "github:numtide/treefmt-nix";
-    git-hooks-nix.url = "github:cachix/git-hooks.nix";
-
-    systems.url = "github:nix-systems/default";
+    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
-    inputs@{
-      self,
-      nixpkgs,
-      flake-parts,
-      crane,
-      ...
-    }:
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = import inputs.systems;
+    inputs@{ self, nixpkgs, ... }:
+    let
+      system = "x86_64-linux";
 
-      imports = [
-        inputs.treefmt-nix.flakeModule
-        inputs.git-hooks-nix.flakeModule
-      ];
+      pkgs = import nixpkgs {
+        inherit system;
+        overlays = [
+          inputs.rust-overlay.overlays.default
+        ];
+      };
 
-      perSystem =
-        {
-          config,
-          system,
-          pkgs,
-          lib,
-          ...
-        }:
-        let
-          rust-bin = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+      rust-bin = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+    in
+    {
+      devShells.${system}.default = pkgs.mkShell {
+        name = "ltrait";
 
-        in
-        {
-          _module.args.pkgs = import inputs.nixpkgs {
-            inherit system;
-            overlays = [
-              inputs.rust-overlay.overlays.default
-            ];
-          };
+        buildInputs = with pkgs; [
+          rust-bin
 
-          treefmt = {
-            projectRootFile = "flake.nix";
-
-            programs = {
-              nixfmt.enable = true;
-              rustfmt = {
-                enable = true;
-                package = rust-bin;
-              };
-              actionlint.enable = true;
-            };
-          };
-
-          pre-commit = {
-            settings = {
-              hooks = {
-                flake-treefmt = {
-                  enable = true;
-                  name = "flake-treefmt";
-                  entry = lib.getExe config.treefmt.build.wrapper;
-                  pass_filenames = false;
-                };
-
-                # clippy.enable = true;
-                cargo-check.enable = true;
-
-                clippy.packageOverrides.cargo = rust-bin;
-                clippy.packageOverrides.clippy = rust-bin;
-              };
-
-              settings.rust.check.cargoDeps = pkgs.rustPlatform.importCargoLock {
-                lockFile = ./Cargo.lock;
-              };
-            };
-          };
-
-          devShells.default = pkgs.mkShell {
-            inputsFrom = [ config.pre-commit.devShell ];
-
-            buildInputs = with pkgs; [
-              cargo-expand
-              cargo-nextest
-
-              rust-bin
-            ];
-          };
-        };
+          cargo-nextest
+        ];
+      };
     };
 }
