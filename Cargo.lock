@@ -127,8 +127,8 @@ checksum = "875b3680cb2f8f71bdcf9a30f38d48282f5d3c95cbf9b3fa57269bb5d5c06828"
 
 [[package]]
 name = "ltrait"
-version = "0.1.0"
-source = "git+https://github.com/ltrait/ltrait#1743403299fa68f6251340f9b5b3824b977d3dc8"
+version = "0.1.1"
+source = "git+https://github.com/ltrait/ltrait#f89819481b27d2b4a7b00ed91c472f37d8f518bb"
 dependencies = [
  "async-trait",
  "color-eyre",
