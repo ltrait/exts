@@ -16,8 +16,6 @@
     git-hooks-nix.url = "github:cachix/git-hooks.nix";
 
     systems.url = "github:nix-systems/default";
-
-    crane.url = "github:ipetkov/crane";
   };
 
   outputs =
@@ -46,23 +44,7 @@
         }:
         let
           rust-bin = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-          craneLib = (crane.mkLib pkgs).overrideToolchain rust-bin;
 
-          commonArgs = {
-            src = craneLib.cleanCargoSource ./.;
-            strictDeps = true;
-
-            buildInputs = with pkgs; [ ];
-
-            nativeBuildInputs = with pkgs; [ ];
-          };
-
-          cargoArtifacts = craneLib.buildDepsOnly (
-            commonArgs
-            // {
-              pname = "deps";
-            }
-          );
         in
         {
           _module.args.pkgs = import inputs.nixpkgs {
@@ -118,18 +100,6 @@
               rust-bin
             ];
           };
-
-          packages.default = craneLib.buildPackage (
-            commonArgs
-            // {
-              inherit cargoArtifacts;
-              pname = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.name;
-              version = "unstable-${self.shortRev or "dirty"}";
-              # # For workspace
-              # cargoExtraArgs = "-p package_name";
-              # version = "unstable-${self.shortRev or "dirty"}";
-            }
-          );
         };
     };
 }
