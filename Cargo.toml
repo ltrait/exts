@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ltrait = { git = "https://github.com/ltrait/ltrait" }
+ltrait = "0.1.1"
 
 freedesktop-icons = "0.3.1"
 freedesktop-desktop-entry = "0.7.8"
