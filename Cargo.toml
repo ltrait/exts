@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ltrait = { git = "https://github.com/ltrait/ltrait" }
+ltrait = "0.1.1"

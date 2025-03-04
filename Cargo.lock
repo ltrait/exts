@@ -128,7 +128,8 @@ checksum = "875b3680cb2f8f71bdcf9a30f38d48282f5d3c95cbf9b3fa57269bb5d5c06828"
 [[package]]
 name = "ltrait"
 version = "0.1.1"
-source = "git+https://github.com/ltrait/ltrait#f89819481b27d2b4a7b00ed91c472f37d8f518bb"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29e06edd581824fd62c075b4b1f1e3e58e2fb668a4b4f564708acc045e0166cd"
 dependencies = [
  "async-trait",
  "color-eyre",
@@ -308,9 +309,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.17"
+version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00e2473a93778eb0bad35909dff6a10d28e63f792f16ed15e404fca9d5eeedbe"
+checksum = "5a5f39404a5da50712a4c1eecf25e90dd62b613502b7e925fd4e4d19b5c96512"
 
 [[package]]
 name = "valuable"
