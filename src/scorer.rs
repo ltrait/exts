@@ -7,9 +7,19 @@ pub trait Scorer {
 use ltrait::Filter;
 use ltrait::Sorter;
 
-pub struct ScorerSorter<C, T>(T)
+pub struct ScorerSorter<C, T>(pub T)
 where
     T: Scorer<Context = C> + Send;
+
+impl<'a, C, T> ScorerSorter<C, T>
+where
+    T: Scorer<Context = C> + Send,
+    C: 'a,
+{
+    pub fn new(t: T) -> Self {
+        ScorerSorter(t)
+    }
+}
 
 impl<'a, C, T> Sorter<'a> for ScorerSorter<C, T>
 where
@@ -25,10 +35,21 @@ where
     }
 }
 
-pub struct ScorerFilter<C, T, F>(T, F)
+pub struct ScorerFilter<C, T, F>(pub T, pub F)
 where
     T: Scorer<Context = C> + Send,
     F: Fn(u32) -> bool;
+
+impl<'a, C, T, F> ScorerFilter<C, T, F>
+where
+    T: Scorer<Context = C> + Send,
+    F: Fn(u32) -> bool + Send,
+    C: 'a,
+{
+    pub fn new(t: T, f: F) -> Self {
+        Self(t, f)
+    }
+}
 
 impl<'a, C, T, F> Filter<'a> for ScorerFilter<C, T, F>
 where
