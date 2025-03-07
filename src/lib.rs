@@ -1,6 +1,11 @@
 //! This crate implement NewFrecency algorithm for ltrait.
 //! See also [User:Jesse/NewFrecency on mozilla wiki](https://wiki.mozilla.org/User:Jesse/NewFrecency?title=User:Jesse/NewFrecency)
+//!
+//! Create a database on `<XDG_DATA_HOME>/ltrait/frency/frency.sqlite`
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
+
+use ltrait::color_eyre::eyre::{OptionExt, Result};
 
 /// The context of ltrait-sorter-frency
 /// `ident` must be unique.
@@ -51,4 +56,8 @@ impl Entry {
 
         self
     }
+}
+
+fn db_dir() -> Option<PathBuf> {
+    dirs::data_dir().and_then(|p| Some(p.join("ltrait/frency/frency.sqlite")))
 }
