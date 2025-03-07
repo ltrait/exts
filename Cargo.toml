@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 ltrait = "0.2.0"
+rusqlite = "0.34.0"
