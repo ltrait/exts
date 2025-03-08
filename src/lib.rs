@@ -4,9 +4,9 @@
 //! Create a database on `<XDG_DATA_HOME>/ltrait/frency/frency.sqlite`
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, Utc};
 use ltrait::color_eyre::eyre::{OptionExt, Result, WrapErr};
 use ltrait::{Action, Sorter};
 use rusqlite::{Connection, params};
@@ -44,7 +44,7 @@ impl Entry {
         }
     }
 
-    fn update<'a>(mut self, ctx: &Context<'a>, config: &FrencyConfig) -> Self {
+    fn update(mut self, ctx: &Context<'_>, config: &FrencyConfig) -> Self {
         let ln2 = (2f64).ln();
         let now = Utc::now();
         let diff = now.signed_duration_since(self.date);
@@ -108,12 +108,12 @@ impl<'a> Sorter<'a> for Frency {
 
     fn compare(&self, lhs: &Self::Context, rhs: &Self::Context, _: &str) -> std::cmp::Ordering {
         ((self.entries.get(lhs.ident))
-            .and_then(|e| Some(e.score))
-            .unwrap_or(0.))
+            .map(|e| e.score)
+            .unwrap_or_default())
         .partial_cmp(
             &(self.entries.get(rhs.ident))
-                .and_then(|e| Some(e.score))
-                .unwrap_or(0.),
+                .map(|e| e.score)
+                .unwrap_or_default(),
         )
         .unwrap_or(std::cmp::Ordering::Equal)
     }
@@ -157,7 +157,7 @@ impl<'a> Action<'a> for Frency {
 
 fn new_conn() -> Result<Connection> {
     fn db_dir() -> Option<PathBuf> {
-        dirs::data_dir().and_then(|p| Some(p.join("ltrait/frency/frency.sqlite")))
+        dirs::data_dir().map(|p| p.join("ltrait/frency/frency.sqlite"))
     }
 
     let conn = Connection::open(db_dir().ok_or_eyre("Failed to get the path to store db")?)
