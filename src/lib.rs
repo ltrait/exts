@@ -1,5 +1,6 @@
 use ltrait::{async_trait::async_trait, generator::Generator};
-use numbat::{Context, module_importer::BuiltinModuleImporter, resolver::CodeSource};
+use std::fs::File;
+use std::io::Read;
 use std::path::PathBuf;
 
 pub struct CalcConfig {
@@ -11,19 +12,21 @@ pub struct CalcConfig {
     ///
     /// It is not possible to set both to `None`.
     ///
-    /// (kalker_prefix, numbat_prefix)
+    /// (kalk_prefix, numbat_prefix)
     ///
     /// If `(Some('k'), None)` and you type `=k `, the formula that is continued is evaluated with
     /// kalker.
     prefix: (Option<char>, Option<char>),
-    kalker_init_path: Option<PathBuf>,
+    kalk_init_path: Option<PathBuf>,
+    kalk_precision: Option<u32>,
     numbat_init_path: Option<PathBuf>,
 }
 
 impl CalcConfig {
     pub fn new(
         prefix: (Option<char>, Option<char>),
-        kalker_init_path: Option<PathBuf>,
+        kalk_init_path: Option<PathBuf>,
+        kalk_precision: Option<u32>,
         numbat_init_path: Option<PathBuf>,
     ) -> Self {
         if prefix.0.is_none() && prefix.1.is_none() {
@@ -31,7 +34,8 @@ impl CalcConfig {
         }
         Self {
             prefix,
-            kalker_init_path,
+            kalk_init_path,
+            kalk_precision,
             numbat_init_path,
         }
     }
@@ -47,6 +51,8 @@ impl Calc {
     }
 
     fn numbat(&self, input: &str) -> Result<String, Box<dyn std::error::Error>> {
+        use numbat::{Context, module_importer::BuiltinModuleImporter, resolver::CodeSource};
+
         let mut ctx = Context::new(BuiltinModuleImporter::default());
 
         let _ = ctx.interpret("use prelude", CodeSource::Internal)?;
@@ -68,8 +74,25 @@ impl Calc {
         }
     }
 
-    fn kalker(&self, input: &str) -> Option<String> {
-        todo!()
+    fn kalker(&self, input: &str) -> Result<String, Box<dyn std::error::Error>> {
+        use kalk::parser;
+        let mut parser_context = parser::Context::new();
+
+        let precision = self.config.kalk_precision.unwrap_or(53);
+
+        if let Some(ref path) = self.config.kalk_init_path {
+            let mut file_content = String::new();
+            File::open(path)?.read_to_string(&mut file_content)?;
+
+            parser::eval(&mut parser_context, &file_content, precision)
+                .map_err(|e| e.to_string())?;
+        }
+
+        let result = parser::eval(&mut parser_context, input, precision)
+            .map_err(|e| e.to_string())?
+            .ok_or("The Result is nothing")?;
+
+        Ok(result.to_string_pretty())
     }
 }
 
