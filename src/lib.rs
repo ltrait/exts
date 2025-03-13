@@ -6,7 +6,7 @@ pub use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
 
 pub struct Context {
-    match_string: String,
+    pub match_string: String,
 }
 
 pub struct NucleoMatcher {

@@ -14,7 +14,7 @@ repository = "https://github.com/ltrait/scorer-nucleo"
 license = "MIT"
 
 [dependencies]
-ltrait = "0.1.1"
+ltrait = "0.4.0"
 ltrait-extra = { git = "https://github.com/ltrait/extra" }
 
 nucleo-matcher = "0.3.1"
