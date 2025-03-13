@@ -14,7 +14,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::Style,
     widgets::{
-        Block, Borders, List, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Widget,
+        Block, Borders, List, Paragraph, Widget,
     },
 };
 use rustc_hash::FxHashMap;
@@ -111,7 +111,7 @@ impl App {
             exit: false,
             selecting_i: 0,
             input: Mutex::new(Input::default()).into(),
-            buffer: RwLock::new(Buffer::default()).into(),
+            buffer: RwLock::new(Buffer::default()),
             tx: None,
             id_to_index: RwLock::new(FxHashMap::default()).into(),
             index_to_id: RwLock::new(FxHashMap::default()).into(),
@@ -144,17 +144,11 @@ impl<'a> App {
                     let crossterm_event = reader.next().fuse();
                     std::thread::sleep(std::time::Duration::from_millis(10));
 
-                    match crossterm_event.await {
-                        Some(Ok(evt)) => match evt {
-                            CEvent::Key(key) => {
-                                if key.kind == KeyEventKind::Press {
-                                    txc.send(Event::CEvent(CEvent::Key(key))).await.unwrap();
-                                }
-                            }
-                            _ => {}
-                        },
-                        _ => {}
-                    }
+                    if let Some(Ok(evt)) = crossterm_event.await { if let CEvent::Key(key) = evt {
+                        if key.kind == KeyEventKind::Press {
+                            txc.send(Event::CEvent(CEvent::Key(key))).await.unwrap();
+                        }
+                    } }
                 }
             });
         }
