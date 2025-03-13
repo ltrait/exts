@@ -13,9 +13,7 @@ use ratatui::{
     DefaultTerminal, Frame, TerminalOptions, Viewport,
     layout::{Constraint, Direction, Layout},
     style::Style,
-    widgets::{
-        Block, Borders, List, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Widget,
-    },
+    widgets::{Block, Borders, List, Paragraph, Widget},
 };
 use rustc_hash::FxHashMap;
 use tui_input::{Input, backend::crossterm::EventHandler};
@@ -255,16 +253,13 @@ impl Widget for &App {
             .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
             .split(area);
 
-        let mut buf = self.buffer.blocking_write();
-        buf.reset_pos();
-
-        let mut id_to_index = self.id_to_index.blocking_write();
-        let mut index_to_id = self.index_to_id.blocking_write();
-
-        let selected_index = *id_to_index.get(&self.selecting_i).unwrap_or(&0);
-
         {
-            let list_area = chunks[0];
+            let entries_area = chunks[0];
+            let mut buf = self.buffer.blocking_write();
+            buf.reset_pos();
+
+            let mut id_to_index = self.id_to_index.blocking_write();
+            let mut index_to_id = self.index_to_id.blocking_write();
 
             let mut items = Vec::new();
             let mut index = 0;
@@ -290,10 +285,12 @@ impl Widget for &App {
                 index += 1;
             }
 
-            let items_count = buf.len();
-            let visible_height = list_area.height as usize - 2;
+            // スクロール機能を追加した実装
+            let items_count = buf.len(); // 全アイテム数
+            let visible_height = entries_area.height as usize - 2; // 境界線を除いた表示可能な高さ
 
             // 選択されたアイテムが常に表示されるようにスクロール位置を計算
+            let selected_index = *id_to_index.get(&self.selecting_i).unwrap_or(&0);
             let scroll_offset = if selected_index >= visible_height && items_count > visible_height
             {
                 // 選択されたアイテムが表示領域の下にある場合
@@ -303,18 +300,21 @@ impl Widget for &App {
                 0
             };
 
+            // 表示するアイテムの範囲を決定
             let start_index = scroll_offset;
             let end_index = (scroll_offset + visible_height).min(items_count);
 
+            // 表示するアイテムのみをリストに追加
             let items: Vec<_> = items
                 .into_iter()
                 .skip(start_index)
                 .take(end_index - start_index)
                 .collect();
 
+            // スクロール情報を含むリストウィジェットを作成
             List::new(items)
                 .block(Block::default().borders(Borders::ALL))
-                .render(list_area, buffer);
+                .render(entries_area, buffer);
         }
         {
             use tokio::runtime::Runtime;
