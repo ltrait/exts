@@ -157,7 +157,13 @@ impl Action<'_> for Frency {
 
 fn new_conn() -> Result<Connection> {
     fn db_dir() -> Option<PathBuf> {
-        dirs::data_dir().map(|p| p.join("ltrait/frency/frency.sqlite"))
+        let path = dirs::data_dir().map(|p| p.join("ltrait/frency/frency.sqlite"));
+
+        if let Some(parent) = path.as_ref().and_then(|p| p.parent()) {
+            std::fs::create_dir_all(parent).ok()?;
+        }
+
+        path
     }
 
     let conn = Connection::open(db_dir().ok_or_eyre("Failed to get the path to store db")?)
