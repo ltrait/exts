@@ -1,7 +1,7 @@
 //! This crate implement NewFrecency algorithm for ltrait.
 //! See also [User:Jesse/NewFrecency on mozilla wiki](https://wiki.mozilla.org/User:Jesse/NewFrecency?title=User:Jesse/NewFrecency)
 //!
-//! Create a database on `<XDG_DATA_HOME>/ltrait/frency/frency.sqlite`
+//! Create a database on `<XDG_DATA_HOME>/ltrait/frecency/frecency.sqlite`
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -11,7 +11,7 @@ use ltrait::color_eyre::eyre::{OptionExt, Result, WrapErr};
 use ltrait::{Action, Sorter};
 use rusqlite::{Connection, params};
 
-/// The context of ltrait-sorter-frency
+/// The context of ltrait-sorter-frecency
 /// The `ident` must be unique within the same type_ident (if you want it to be judged as different)
 ///
 /// If `bonus` is 0 and it is the first visit, the final score will also be 0 and will not increase. Set the `bonus` appropriately
@@ -22,7 +22,7 @@ pub struct Context {
 }
 
 /// * `samples_count` pick up numbers that used to caliculate the score
-pub struct FrencyConfig {
+pub struct FrecencyConfig {
     pub half_life: Duration,
     pub type_ident: String,
 }
@@ -44,7 +44,7 @@ impl Entry {
         }
     }
 
-    fn update(mut self, ctx: &Context, config: &FrencyConfig) -> Self {
+    fn update(mut self, ctx: &Context, config: &FrecencyConfig) -> Self {
         let ln2 = (2f64).ln();
         let now = Utc::now();
         let diff = now.signed_duration_since(self.date);
@@ -62,13 +62,13 @@ impl Entry {
     }
 }
 
-pub struct Frency {
+pub struct Frecency {
     entries: HashMap<String, Entry>,
-    config: FrencyConfig,
+    config: FrecencyConfig,
 }
 
-impl Frency {
-    pub fn new(config: FrencyConfig) -> Result<Self> {
+impl Frecency {
+    pub fn new(config: FrecencyConfig) -> Result<Self> {
         Ok(Self {
             entries: {
                 let conn = new_conn()?;
@@ -103,7 +103,7 @@ impl Frency {
     }
 }
 
-impl Sorter<'_> for Frency {
+impl Sorter<'_> for Frecency {
     type Context = Context;
 
     fn compare(&self, lhs: &Self::Context, rhs: &Self::Context, _: &str) -> std::cmp::Ordering {
@@ -119,7 +119,7 @@ impl Sorter<'_> for Frency {
     }
 }
 
-impl Action<'_> for Frency {
+impl Action<'_> for Frecency {
     type Context = Context;
 
     fn act(&self, ctx: &Self::Context) -> Result<()> {
@@ -157,7 +157,7 @@ impl Action<'_> for Frency {
 
 fn new_conn() -> Result<Connection> {
     fn db_dir() -> Option<PathBuf> {
-        let path = dirs::data_dir().map(|p| p.join("ltrait/frency/frency.sqlite"));
+        let path = dirs::data_dir().map(|p| p.join("ltrait/frecency/frecency.sqlite"));
 
         if let Some(parent) = path.as_ref().and_then(|p| p.parent()) {
             std::fs::create_dir_all(parent).ok()?;
