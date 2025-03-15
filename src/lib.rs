@@ -12,12 +12,12 @@ use ltrait::{Action, Sorter};
 use rusqlite::{Connection, params};
 
 /// The context of ltrait-sorter-frency
-/// `ident` must be unique.
+/// The `ident` must be unique within the same type_ident (if you want it to be judged as different)
 ///
 /// If `bonus` is 0 and it is the first visit, the final score will also be 0 and will not increase. Set the `bonus` appropriately
 /// I don't know how much is optimal, so you'll have to try different things for a while.
-pub struct Context<'a> {
-    pub ident: &'a str,
+pub struct Context {
+    pub ident: String,
     pub bonus: f64,
 }
 
@@ -44,7 +44,7 @@ impl Entry {
         }
     }
 
-    fn update(mut self, ctx: &Context<'_>, config: &FrencyConfig) -> Self {
+    fn update(mut self, ctx: &Context, config: &FrencyConfig) -> Self {
         let ln2 = (2f64).ln();
         let now = Utc::now();
         let diff = now.signed_duration_since(self.date);
@@ -103,15 +103,15 @@ impl Frency {
     }
 }
 
-impl<'a> Sorter<'a> for Frency {
-    type Context = Context<'a>;
+impl Sorter<'_> for Frency {
+    type Context = Context;
 
     fn compare(&self, lhs: &Self::Context, rhs: &Self::Context, _: &str) -> std::cmp::Ordering {
-        ((self.entries.get(lhs.ident))
+        ((self.entries.get(&lhs.ident))
             .map(|e| e.score)
             .unwrap_or_default())
         .partial_cmp(
-            &(self.entries.get(rhs.ident))
+            &(self.entries.get(&rhs.ident))
                 .map(|e| e.score)
                 .unwrap_or_default(),
         )
@@ -119,19 +119,19 @@ impl<'a> Sorter<'a> for Frency {
     }
 }
 
-impl<'a> Action<'a> for Frency {
-    type Context = Context<'a>;
+impl Action<'_> for Frency {
+    type Context = Context;
 
     fn act(&self, ctx: &Self::Context) -> Result<()> {
         // self.entries
-        let new_entry = if self.entries.contains_key(ctx.ident) {
+        let new_entry = if self.entries.contains_key(&ctx.ident) {
             self.entries
-                .get(ctx.ident)
+                .get(&ctx.ident)
                 .unwrap()
                 .clone()
                 .update(ctx, &self.config)
         } else {
-            Entry::new(ctx.ident.into())
+            Entry::new(ctx.ident.clone())
         };
 
         let conn = new_conn()?;
