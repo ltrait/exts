@@ -23,8 +23,8 @@ pub struct Context<'a> {
 
 /// * `samples_count` pick up numbers that used to caliculate the score
 pub struct FrencyConfig {
-    half_life: Duration,
-    type_ident: String,
+    pub half_life: Duration,
+    pub type_ident: String,
 }
 
 #[derive(Debug, Clone)]
