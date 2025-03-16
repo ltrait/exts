@@ -57,7 +57,6 @@ where
     Cusion: Sync,
 {
     pub fn new(
-        &self,
         filter1: T1,
         transformer1: F1,
         filter2: T2,
