@@ -11,10 +11,9 @@ pub struct ScorerSorter<C, T>(pub T)
 where
     T: Scorer<Context = C> + Send;
 
-impl<'a, C, T> ScorerSorter<C, T>
+impl<C, T> ScorerSorter<C, T>
 where
     T: Scorer<Context = C> + Send,
-    C: 'a,
 {
     pub fn new(t: T) -> Self {
         ScorerSorter(t)
@@ -40,11 +39,10 @@ where
     T: Scorer<Context = C> + Send,
     F: Fn(u32) -> bool;
 
-impl<'a, C, T, F> ScorerFilter<C, T, F>
+impl<C, T, F> ScorerFilter<C, T, F>
 where
     T: Scorer<Context = C> + Send,
     F: Fn(u32) -> bool + Send,
-    C: 'a,
 {
     pub fn new(t: T, f: F) -> Self {
         Self(t, f)

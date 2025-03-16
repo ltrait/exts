@@ -1,6 +1,4 @@
-// TODO: List
-
-use ltrait::Filter;
+use ltrait::{filter::FilterWrapper, Filter};
 use std::marker::PhantomData;
 
 pub struct FilterComb<'a, Cusion, T1, T2, C1, C2, F1, F2, F3>
@@ -75,28 +73,31 @@ where
     }
 }
 
-pub struct FilterIf<'a, T, Ctx, F>
+pub struct FilterIf<'a, T, Cusion, F>
 where
-    T: Filter<'a, Context = Ctx>,
-    F: Fn(&Ctx) -> bool + Send,
-    Ctx: Sync,
+    T: Filter<'a, Context = Cusion>,
+    F: Fn(&Cusion) -> bool + Send,
+    Cusion: Sync,
 {
     filter: T,
 
     f: F,
 
-    _ctx: PhantomData<&'a Ctx>,
+    _ctx: PhantomData<&'a Cusion>,
 }
 
-impl<'a, T, Ctx, F> FilterIf<'a, T, Ctx, F>
+impl<'a, Cusion, F, InnerF, TransF, Ctx>
+    FilterIf<'a, FilterWrapper<'a, Ctx, InnerF, TransF, Cusion>, Cusion, F>
 where
-    T: Filter<'a, Context = Ctx>,
-    F: Fn(&Ctx) -> bool + Send,
+    F: Fn(&Cusion) -> bool + Send,
+    Cusion: Sync + Send,
+    TransF: Fn(&Cusion) -> Ctx + Send,
+    InnerF: Filter<'a, Context = Ctx>,
     Ctx: Sync,
 {
-    pub fn new(filter: T, f: F) -> Self {
+    pub fn new(filter: InnerF, f: F, transformer: TransF) -> Self {
         Self {
-            filter,
+            filter: FilterWrapper::new(filter, transformer),
             f,
             _ctx: PhantomData,
         }
