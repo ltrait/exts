@@ -1,28 +1,31 @@
-use ltrait::Sorter;
+use ltrait::{sorter::SorterWrapper, Sorter};
 use std::marker::PhantomData;
 
-pub struct SorterIf<'a, T, Ctx, F>
+pub struct SorterIf<'a, T, Cusion, F>
 where
-    T: Sorter<'a, Context = Ctx>,
-    F: Fn(&Ctx) -> bool + Send,
-    Ctx: Sync,
+    T: Sorter<'a, Context = Cusion>,
+    F: Fn(&Cusion) -> bool + Send,
+    Cusion: Sync,
 {
     sorter: T,
 
     f: F,
 
-    _ctx: PhantomData<&'a Ctx>,
+    _ctx: PhantomData<&'a Cusion>,
 }
 
-impl<'a, T, Ctx, F> SorterIf<'a, T, Ctx, F>
+impl<'a, Cusion, F, InnerT, TransF, Ctx>
+    SorterIf<'a, SorterWrapper<'a, Ctx, InnerT, TransF, Cusion>, Cusion, F>
 where
-    T: Sorter<'a, Context = Ctx>,
-    F: Fn(&Ctx) -> bool + Send,
+    F: Fn(&Cusion) -> bool + Send,
+    Cusion: Sync + Send,
+    InnerT: Sorter<'a, Context = Ctx>,
+    TransF: Fn(&Cusion) -> Ctx + Send,
     Ctx: Sync,
 {
-    pub fn new(sorter: T, f: F) -> Self {
+    pub fn new(sorter: InnerT, f: F, transformer: TransF) -> Self {
         Self {
-            sorter,
+            sorter: SorterWrapper::new(sorter, transformer),
             f,
             _ctx: PhantomData,
         }
