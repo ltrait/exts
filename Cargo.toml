@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ltrait = { git = "https://github.com/ltrait/core" }
+ltrait = "0.7.0"
 
 crossterm = { version = "0.28.1", features = ["event-stream"] }
 ratatui = "0.29.0"
