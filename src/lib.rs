@@ -1,8 +1,8 @@
 use ltrait::{
-    color_eyre::eyre::{OptionExt, Result, WrapErr},
+    color_eyre::eyre::{OptionExt, Result, WrapErr, bail},
     launcher::batcher::Batcher,
     tokio_stream::StreamExt as _,
-    ui::{Buffer, UI},
+    ui::{Buffer, Position, UI},
 };
 
 use crossterm::{
@@ -13,21 +13,14 @@ use ratatui::{
     DefaultTerminal, Frame, TerminalOptions, Viewport,
     layout::{Constraint, Direction, Layout},
     style::Style,
-    widgets::{
-        Block, Borders, List, Paragraph, Widget,
-    },
+    widgets::{Block, Borders, List, Paragraph, Widget},
 };
-use rustc_hash::FxHashMap;
 use tui_input::{Input, backend::crossterm::EventHandler};
 
 pub use ratatui::style;
 
-use futures::FutureExt as _;
-use std::sync::Arc;
-use tokio::sync::{
-    Mutex, RwLock,
-    mpsc::{self, Sender},
-};
+use futures::{FutureExt as _, join, select};
+use tokio::sync::mpsc;
 
 pub struct Tui {
     config: TuiConfig,
@@ -89,32 +82,29 @@ impl<'a> UI<'a> for Tui {
     }
 }
 
+// なんのArc, Mutex, RwLockを使うか検討する必要がある。renderの中で使えないと意味ないし
 struct App {
     config: TuiConfig,
 
     exit: bool,
     // 上が0
     selecting_i: usize,
-    input: Arc<Mutex<Input>>,
-    buffer: RwLock<Buffer<(TuiEntry, usize)>>,
-    tx: Option<Sender<Event>>,
+    input: Input,
+    buffer: Buffer<(TuiEntry, usize)>,
     has_more: bool,
-    id_to_index: Arc<RwLock<FxHashMap<usize, usize>>>,
-    index_to_id: Arc<RwLock<FxHashMap<usize, usize>>>,
+    tx: Option<mpsc::Sender<Event>>,
 }
 
 impl App {
     fn new(config: TuiConfig) -> Self {
         Self {
+            has_more: true,
             config,
-            has_more: false,
             exit: false,
             selecting_i: 0,
-            input: Mutex::new(Input::default()).into(),
-            buffer: RwLock::new(Buffer::default()),
+            input: Input::default(),
+            buffer: Buffer::default(),
             tx: None,
-            id_to_index: RwLock::new(FxHashMap::default()).into(),
-            index_to_id: RwLock::new(FxHashMap::default()).into(),
         }
     }
 }
@@ -122,7 +112,26 @@ impl App {
 enum Event {
     CEvent(CEvent),
     Refresh,
-    Next,
+    Input,
+}
+
+impl Event {
+    async fn terminal_event_listener(tx: mpsc::Sender<Event>) {
+        let mut reader = crossterm::event::EventStream::new();
+
+        loop {
+            let crossterm_event = reader.next().fuse();
+            std::thread::sleep(std::time::Duration::from_millis(10));
+
+            if let Some(Ok(evt)) = crossterm_event.await {
+                if let CEvent::Key(key) = evt {
+                    if key.kind == KeyEventKind::Press {
+                        tx.send(Event::CEvent(CEvent::Key(key))).await.unwrap();
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'a> App {
@@ -131,46 +140,52 @@ impl<'a> App {
         terminal: &mut DefaultTerminal,
         batcher: &mut Batcher<'a, Cusion, TuiEntry>,
     ) -> Result<usize> {
-        self.has_more = batcher.marge(&mut *self.buffer.write().await).await?;
-
         let (tx, mut rx) = mpsc::channel(100);
 
-        {
-            let txc = tx.clone();
-            tokio::spawn(async move {
-                let mut reader = crossterm::event::EventStream::new();
-
-                loop {
-                    let crossterm_event = reader.next().fuse();
-                    std::thread::sleep(std::time::Duration::from_millis(10));
-
-                    if let Some(Ok(evt)) = crossterm_event.await { if let CEvent::Key(key) = evt {
-                        if key.kind == KeyEventKind::Press {
-                            txc.send(Event::CEvent(CEvent::Key(key))).await.unwrap();
-                        }
-                    } }
-                }
-            });
-        }
-
+        tokio::spawn(Event::terminal_event_listener(tx.clone()));
         self.tx = Some(tx.clone());
 
         while !self.exit {
-            let event = rx.recv().await.unwrap();
-            terminal.draw(|frame| self.draw(frame))?;
+            let prepare = async {
+                if self.has_more {
+                    batcher.prepare().await
+                } else {
+                    // HACK: もうeventだけ気にしていればいいから
+                    tokio::time::sleep(std::time::Duration::from_secs(100)).await;
+                    batcher.prepare().await
+                }
+            };
 
-            self.handle_events(event, batcher)
-                .await
-                .wrap_err("handle events failed")?;
+            select! {
+                // TODO: 毎回futureを生成し直していると
+                // dropした場合にバグるかも。あと必ず、rx.recvが早い場合何も表示されなくなっちゃうかも
+                from = prepare.fuse() => {
+                    let (has_more, _) = join!(
+                        batcher.merge(&mut self.buffer, from),
+                        tx.send(Event::Refresh),
+                    );
 
-            if self.has_more {
-                tx.send(Event::Next)
-                    .await
-                    .wrap_err("Failed to send message `Event::Next`")?;
+                    self.has_more = has_more?;
+                }
+                event_like = rx.recv().fuse() => {
+                    match event_like {
+                        Some(event) => {
+                            self.handle_events(event, batcher)
+                                .await
+                                .wrap_err("handle events failed")?;
+
+                            terminal.draw(|frame| self.draw(frame))?;
+                        }
+                    _ => bail!("the communication channel for event was unexpectedly closed.")
+                    }
+                }
             }
         }
 
-        Ok(self.selecting_i)
+        Ok({
+            let mut pos = Position(self.selecting_i);
+            self.buffer.next(&mut pos).unwrap().1
+        })
     }
 
     fn draw(&self, frame: &mut Frame) {
@@ -188,12 +203,10 @@ impl<'a> App {
             Event::CEvent(CEvent::Key(key_event)) if key_event.kind == KeyEventKind::Press => {
                 self.handle_key_event(key_event).await?
             }
-            Event::Refresh => {
-                let input = &self.input;
-                batcher.input(&mut *self.buffer.write().await, input.lock().await.value())
-            }
-            Event::Next => {
-                self.has_more = batcher.marge(&mut *self.buffer.write().await).await?;
+            Event::Input => {
+                batcher.input(&mut self.buffer, self.input.value());
+                // 一回一番上に戻す
+                self.selecting_i = 0;
             }
             _ => {}
         };
@@ -205,31 +218,20 @@ impl<'a> App {
             (KeyCode::Char('c'), KeyModifiers::CONTROL)
             | (KeyCode::Char('d'), KeyModifiers::CONTROL) => self.exit(),
             (KeyCode::Up, _) | (KeyCode::Char('k'), KeyModifiers::CONTROL) => {
-                let id_to_index = self.id_to_index.read().await;
-                let index = id_to_index.get(&self.selecting_i).unwrap();
-                let new_index = (index + 1).max(id_to_index.len() - 1);
-
-                let index_to_id = self.index_to_id.read().await;
-                self.selecting_i = *index_to_id.get(&new_index).unwrap();
+                self.selecting_i = self.selecting_i.saturating_sub(1);
             }
             (KeyCode::Down, _) | (KeyCode::Char('j'), KeyModifiers::CONTROL) => {
-                let id_to_index = self.id_to_index.read().await;
-                let index = id_to_index.get(&self.selecting_i).unwrap();
-                let new_index = index.saturating_sub(1);
-
-                let index_to_id = self.index_to_id.read().await;
-                self.selecting_i = *index_to_id.get(&new_index).unwrap();
+                self.selecting_i = (self.selecting_i + 1).min(self.buffer.len().saturating_sub(1));
             }
             _ => {
-                (*self.input)
-                    .lock()
-                    .await
+                self.input
                     .handle_event(&crossterm::event::Event::Key(key_event))
                     .ok_or_eyre("Failed to lock input")?;
+
                 self.tx
                     .as_mut()
                     .unwrap()
-                    .send(Event::Refresh)
+                    .send(Event::Input)
                     .await
                     .wrap_err("Failed to send Refresh")?;
             }
@@ -249,25 +251,17 @@ impl Widget for &App {
             .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
             .split(area);
 
-        let mut buf = self.buffer.blocking_write();
-        buf.reset_pos();
-
-        let mut id_to_index = self.id_to_index.blocking_write();
-        let mut index_to_id = self.index_to_id.blocking_write();
-
-        let selected_index = *id_to_index.get(&self.selecting_i).unwrap_or(&0);
-
+        // エントリーの部分
         {
             let list_area = chunks[0];
 
-            let mut items = Vec::new();
-            let mut index = 0;
+            let items_count = self.buffer.len();
+            let mut items = Vec::with_capacity(items_count);
 
-            while let Some(&(ref entry, id)) = buf.next() {
-                id_to_index.insert(id, index);
-                index_to_id.insert(index, id);
+            let mut pos = Position::default();
 
-                let is_selected = id == self.selecting_i;
+            while let Some((entry, _)) = self.buffer.next(&mut pos) {
+                let is_selected = pos.0 - 1 == self.selecting_i;
 
                 let selecting_status = if is_selected {
                     self.config.selecting
@@ -280,22 +274,19 @@ impl Widget for &App {
 
                 // リストアイテムを追加
                 items.push(ratatui::widgets::ListItem::new(entry_text).style(style));
-
-                index += 1;
             }
 
-            let items_count = buf.len();
             let visible_height = list_area.height as usize - 2;
 
             // 選択されたアイテムが常に表示されるようにスクロール位置を計算
-            let scroll_offset = if selected_index >= visible_height && items_count > visible_height
-            {
-                // 選択されたアイテムが表示領域の下にある場合
-                selected_index - visible_height + 1
-            } else {
-                // 選択されたアイテムが表示領域内にある場合
-                0
-            };
+            let scroll_offset =
+                if self.selecting_i >= visible_height && items_count > visible_height {
+                    // 選択されたアイテムが表示領域の下にある場合
+                    self.selecting_i - visible_height + 1
+                } else {
+                    // 選択されたアイテムが表示領域内にある場合
+                    0
+                };
 
             let start_index = scroll_offset;
             let end_index = (scroll_offset + visible_height).min(items_count);
@@ -310,16 +301,9 @@ impl Widget for &App {
                 .block(Block::default().borders(Borders::ALL))
                 .render(list_area, buffer);
         }
+        // テキスト入力部分
         {
-            use tokio::runtime::Runtime;
-            let rt = Runtime::new().unwrap();
-
-            let input_text = {
-                rt.block_on(async {
-                    println!("hello");
-                    (*self.input).lock().await.to_string()
-                })
-            };
+            let input_text = self.input.to_string();
 
             Paragraph::new(input_text)
                 .block(Block::default().borders(Borders::ALL))
