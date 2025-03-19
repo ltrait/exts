@@ -3,6 +3,9 @@ name = "ltrait-ui-tui"
 version = "0.1.0"
 edition = "2024"
 
+[package.metadata.typos.default.extend-words]
+ratatui = "ratatui"
+
 [dependencies]
 ltrait = "0.7.0"
 
