@@ -13,6 +13,7 @@ pub enum DesktopError {
     ImageDecode(#[source] image::ImageError),
 }
 
+#[derive(Debug, Clone)]
 pub struct DesktopEntry {
     pub entry: freedesktop_desktop_entry::DesktopEntry,
 }
