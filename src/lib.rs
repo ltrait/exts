@@ -215,6 +215,9 @@ impl<'a> App {
 
     async fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
         match (key_event.code, key_event.modifiers) {
+            (KeyCode::Enter, _) => {
+                self.exit();
+            }
             (KeyCode::Char('c'), KeyModifiers::CONTROL)
             | (KeyCode::Char('d'), KeyModifiers::CONTROL) => self.exit(),
             (KeyCode::Up, _) | (KeyCode::Char('k'), KeyModifiers::CONTROL) => {
