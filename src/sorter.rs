@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 pub struct SorterIf<'a, T, Cusion, F>
 where
     T: Sorter<'a, Context = Cusion>,
-    F: Fn(&Cusion) -> bool + Send,
+    F: Fn(&Cusion) -> bool + Send + 'a,
     Cusion: Sync,
 {
     sorter: T,
@@ -35,7 +35,7 @@ where
 impl<'a, T, Ctx, F> Sorter<'a> for SorterIf<'a, T, Ctx, F>
 where
     T: Sorter<'a, Context = Ctx>,
-    F: Fn(&Ctx) -> bool + Send,
+    F: Fn(&Ctx) -> bool + Send + 'a,
     Ctx: Sync,
 {
     type Context = Ctx;

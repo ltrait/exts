@@ -3,12 +3,17 @@ use std::marker::PhantomData;
 
 pub struct FilterComb<'a, Cusion, T1, T2, C1, C2, F1, F2, F3>
 where
-    F1: Fn(&Cusion) -> C1 + Send,
-    F2: Fn(&Cusion) -> C2 + Send,
-    F3: Fn(bool, bool) -> bool + Send,
+    F1: Fn(&Cusion) -> C1 + Send + 'a,
+    F2: Fn(&Cusion) -> C2 + Send + 'a,
+    F3: Fn(bool, bool) -> bool + Send + 'a,
 
     T1: Filter<'a, Context = C1>,
     T2: Filter<'a, Context = C2>,
+
+    C1: 'a,
+    C2: 'a,
+
+    Cusion: Sync,
 {
     filter1: T1,
     filter2: T2,
@@ -24,12 +29,15 @@ where
 impl<'a, Cusion, T1, T2, C1, C2, F1, F2, F3> Filter<'a>
     for FilterComb<'a, Cusion, T1, T2, C1, C2, F1, F2, F3>
 where
-    F1: Fn(&Cusion) -> C1 + Send,
-    F2: Fn(&Cusion) -> C2 + Send,
-    F3: Fn(bool, bool) -> bool + Send,
+    F1: Fn(&Cusion) -> C1 + Send + 'a,
+    F2: Fn(&Cusion) -> C2 + Send + 'a,
+    F3: Fn(bool, bool) -> bool + Send + 'a,
 
     T1: Filter<'a, Context = C1>,
     T2: Filter<'a, Context = C2>,
+
+    C1: 'a,
+    C2: 'a,
 
     Cusion: Sync,
 {
@@ -45,12 +53,15 @@ where
 
 impl<'a, Cusion, T1, T2, C1, C2, F1, F2, F3> FilterComb<'a, Cusion, T1, T2, C1, C2, F1, F2, F3>
 where
-    F1: Fn(&Cusion) -> C1 + Send,
-    F2: Fn(&Cusion) -> C2 + Send,
-    F3: Fn(bool, bool) -> bool + Send,
+    F1: Fn(&Cusion) -> C1 + Send + 'a,
+    F2: Fn(&Cusion) -> C2 + Send + 'a,
+    F3: Fn(bool, bool) -> bool + Send + 'a,
 
     T1: Filter<'a, Context = C1>,
     T2: Filter<'a, Context = C2>,
+
+    C1: 'a,
+    C2: 'a,
 
     Cusion: Sync,
 {
@@ -72,23 +83,23 @@ where
     }
 }
 
-pub struct FilterIf<'a, T, Cusion, F>
+pub struct FilterIf<'a, T, Ctx, F>
 where
-    T: Filter<'a, Context = Cusion>,
-    F: Fn(&Cusion) -> bool + Send,
-    Cusion: Sync,
+    T: Filter<'a, Context = Ctx>,
+    F: Fn(&Ctx) -> bool + Send + 'a,
+    Ctx: Sync,
 {
     filter: T,
 
     f: F,
 
-    _ctx: PhantomData<&'a Cusion>,
+    _ctx: PhantomData<&'a Ctx>,
 }
 
 impl<'a, Cusion, F, InnerF, TransF, Ctx>
     FilterIf<'a, FilterWrapper<'a, Ctx, InnerF, TransF, Cusion>, Cusion, F>
 where
-    F: Fn(&Cusion) -> bool + Send,
+    F: Fn(&Cusion) -> bool + Send + 'a,
     Cusion: Sync + Send,
     TransF: Fn(&Cusion) -> Ctx + Send,
     InnerF: Filter<'a, Context = Ctx>,
@@ -106,7 +117,7 @@ where
 impl<'a, T, Ctx, F> Filter<'a> for FilterIf<'a, T, Ctx, F>
 where
     T: Filter<'a, Context = Ctx>,
-    F: Fn(&Ctx) -> bool + Send,
+    F: Fn(&Ctx) -> bool + Send + 'a,
     Ctx: Sync,
 {
     type Context = Ctx;

@@ -22,7 +22,7 @@ where
 
 impl<'a, C, T> Sorter<'a> for ScorerSorter<C, T>
 where
-    T: Scorer<Context = C> + Send,
+    T: Scorer<Context = C> + Send + 'a,
     C: 'a,
 {
     type Context = C;
@@ -51,8 +51,8 @@ where
 
 impl<'a, C, T, F> Filter<'a> for ScorerFilter<C, T, F>
 where
-    T: Scorer<Context = C> + Send,
-    F: Fn(u32) -> bool + Send,
+    T: Scorer<Context = C> + Send + 'a,
+    F: Fn(u32) -> bool + Send + 'a,
     C: 'a,
 {
     type Context = C;
