@@ -50,7 +50,7 @@ impl<'a> NucleoMatcher {
 
     pub fn into_filter<F>(self, predicate: F) -> impl Filter<'a, Context = Context>
     where
-        F: Fn(u32) -> bool + Send,
+        F: Fn(u32) -> bool + Send + 'a,
     {
         ScorerFilter::new(self, predicate)
     }
