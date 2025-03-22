@@ -1,6 +1,6 @@
 [package]
 name = "ltrait-source-desktop"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 
 description = "A source of FreeDesktopOrg's Desktop Entry for ltrait"
@@ -14,7 +14,7 @@ repository = "https://github.com/ltrait/source-desktop"
 license = "MIT"
 
 [dependencies]
-ltrait = "0.8.1"
+ltrait = "0.8.5"
 
 freedesktop-icons = "0.3.1"
 freedesktop-desktop-entry = "0.7.8"
