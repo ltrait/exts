@@ -23,6 +23,8 @@ pub use ratatui::style;
 use futures::{FutureExt as _, join, select};
 use tokio::sync::mpsc;
 
+use std::sync::RwLock;
+
 pub struct Tui {
     config: TuiConfig,
 }
@@ -91,6 +93,7 @@ struct App {
     // 上が0
     selecting_i: usize,
     input: Input,
+    cursor_pos: RwLock<Option<(u16, u16)>>,
     buffer: Buffer<(TuiEntry, usize)>,
     has_more: bool,
     tx: Option<mpsc::Sender<Event>>,
@@ -106,6 +109,7 @@ impl App {
             input: Input::default(),
             buffer: Buffer::default(),
             tx: None,
+            cursor_pos: None.into(),
         }
     }
 }
@@ -198,6 +202,9 @@ impl<'a> App {
 
     fn draw(&self, frame: &mut Frame) {
         frame.render_widget(self, frame.area());
+        frame.set_cursor_position(ratatui::layout::Position::from(
+            self.cursor_pos.read().unwrap().unwrap(),
+        ))
     }
 
     async fn handle_events<Cusion: Send + 'a>(
@@ -329,6 +336,11 @@ impl Widget for &App {
             Paragraph::new(input_text)
                 .block(Block::default().borders(Borders::TOP))
                 .render(input_area, buffer);
+
+            *self.cursor_pos.write().unwrap() = Some((
+                input_area.x + self.input.visual_cursor() as u16,
+                input_area.y + 1,
+            ));
         }
     }
 }
