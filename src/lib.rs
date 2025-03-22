@@ -238,16 +238,21 @@ impl<'a> App {
                 self.selecting_i = self.selecting_i.saturating_sub(1);
             }
             _ => {
-                self.input
-                    .handle_event(&crossterm::event::Event::Key(key_event))
-                    .ok_or_eyre("Failed to lock input")?;
+                if !(self.input.cursor() == 0 && key_event.code == KeyCode::Backspace)
+                    && !(self.input.cursor() == self.input.value().len().saturating_sub(1)
+                        && key_event.code == KeyCode::Delete)
+                {
+                    self.input
+                        .handle_event(&crossterm::event::Event::Key(key_event))
+                        .ok_or_eyre("Failed to lock input")?;
 
-                self.tx
-                    .as_mut()
-                    .unwrap()
-                    .send(Event::Input)
-                    .await
-                    .wrap_err("Failed to send Refresh")?;
+                    self.tx
+                        .as_mut()
+                        .unwrap()
+                        .send(Event::Input)
+                        .await
+                        .wrap_err("Failed to send Refresh")?;
+                }
             }
         }
         Ok(())
