@@ -1,4 +1,7 @@
 use ltrait::{source::Source, tokio_stream};
+use std::path::PathBuf;
+
+pub use freedesktop_desktop_entry::default_paths;
 
 pub mod icon;
 
@@ -25,9 +28,11 @@ impl DesktopEntry {
 }
 
 // 楽をするためにfreedesktop_desktop_entryを使っているからStreamではなく、性能を最大限に活かしきれていない
-pub fn new<'a>() -> Result<Source<'a, DesktopEntry>, DesktopError> {
-    use freedesktop_desktop_entry::{Iter, default_paths};
-    let entries = Iter::new(default_paths())
+pub fn new<'a>(
+    paths: impl Iterator<Item = PathBuf>,
+) -> Result<Source<'a, DesktopEntry>, DesktopError> {
+    use freedesktop_desktop_entry::Iter;
+    let entries = Iter::new(paths)
         .entries::<String>(None)
         .map(|e| DesktopEntry { entry: e });
 
