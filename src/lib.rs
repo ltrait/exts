@@ -239,12 +239,12 @@ impl<'a> App {
             }
             _ => {
                 if !(self.input.cursor() == 0 && key_event.code == KeyCode::Backspace)
-                    && !(self.input.cursor() == self.input.value().len().saturating_sub(1)
+                    && !(self.input.cursor() == self.input.value().len()
                         && key_event.code == KeyCode::Delete)
                 {
                     self.input
                         .handle_event(&crossterm::event::Event::Key(key_event))
-                        .ok_or_eyre("Failed to lock input")?;
+                        .ok_or_eyre("Failed to handle input")?;
 
                     self.tx
                         .as_mut()
