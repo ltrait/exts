@@ -15,6 +15,7 @@ use ratatui::{
     style::Style,
     widgets::{Block, Borders, List, Paragraph, Widget},
 };
+use tracing::{debug, info, info_span};
 use tui_input::{Input, backend::crossterm::EventHandler};
 
 pub use ratatui::style;
@@ -109,6 +110,7 @@ impl App {
     }
 }
 
+#[derive(Debug)]
 enum Event {
     CEvent(CEvent),
     Refresh,
@@ -151,6 +153,7 @@ impl<'a> App {
                     batcher.prepare().await
                 } else {
                     // HACK: もうeventだけ気にしていればいいから
+                    info!("No more items. Sleeping");
                     tokio::time::sleep(std::time::Duration::from_secs(100)).await;
                     batcher.prepare().await
                 }
@@ -160,6 +163,7 @@ impl<'a> App {
                 // TODO: 毎回futureを生成し直していると
                 // dropした場合にバグるかも。あと必ず、rx.recvが早い場合何も表示されなくなっちゃうかも
                 from = prepare.fuse() => {
+                    info_span!("Merging");
                     let (has_more, _) = join!(
                         batcher.merge(&mut self.buffer, from),
                         tx.send(Event::Refresh),
@@ -168,6 +172,9 @@ impl<'a> App {
                     self.has_more = has_more?;
                 }
                 event_like = rx.recv().fuse() => {
+                    info!("Caught event-like");
+                    debug!("{event_like:?}");
+
                     match event_like {
                         Some(event) => {
                             self.handle_events(event, batcher)
@@ -201,12 +208,15 @@ impl<'a> App {
             // it's important to check that the event is a key press event as
             // crossterm also emits key release and repeat events on Windows.
             Event::CEvent(CEvent::Key(key_event)) if key_event.kind == KeyEventKind::Press => {
+                info!("Handling KeyInput");
                 self.handle_key_event(key_event).await?
             }
             Event::Input => {
+                info!("Handling Input");
                 batcher.input(&mut self.buffer, self.input.value());
                 // 一回一番上に戻す
                 self.selecting_i = 0;
+                self.has_more = true;
             }
             _ => {}
         };
@@ -221,10 +231,10 @@ impl<'a> App {
             (KeyCode::Char('c'), KeyModifiers::CONTROL)
             | (KeyCode::Char('d'), KeyModifiers::CONTROL) => self.exit(),
             (KeyCode::Up, _) | (KeyCode::Char('k'), KeyModifiers::CONTROL) => {
-                self.selecting_i = self.selecting_i.saturating_sub(1);
+                self.selecting_i = (self.selecting_i + 1).min(self.buffer.len().saturating_sub(1));
             }
             (KeyCode::Down, _) | (KeyCode::Char('j'), KeyModifiers::CONTROL) => {
-                self.selecting_i = (self.selecting_i + 1).min(self.buffer.len().saturating_sub(1));
+                self.selecting_i = self.selecting_i.saturating_sub(1);
             }
             _ => {
                 self.input
@@ -251,7 +261,7 @@ impl Widget for &App {
     fn render(self, area: ratatui::prelude::Rect, buffer: &mut ratatui::prelude::Buffer) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
+            .constraints([Constraint::Min(0), Constraint::Length(2)].as_ref())
             .split(area);
 
         // エントリーの部分
@@ -279,17 +289,18 @@ impl Widget for &App {
                 items.push(ratatui::widgets::ListItem::new(entry_text).style(style));
             }
 
-            let visible_height = list_area.height as usize - 2;
+            items.reverse();
+
+            let visible_height = list_area.height as usize;
+            let reversed_selecting_index = items_count - 1 - self.selecting_i;
 
             // 選択されたアイテムが常に表示されるようにスクロール位置を計算
-            let scroll_offset =
-                if self.selecting_i >= visible_height && items_count > visible_height {
-                    // 選択されたアイテムが表示領域の下にある場合
-                    self.selecting_i - visible_height + 1
-                } else {
-                    // 選択されたアイテムが表示領域内にある場合
-                    0
-                };
+            let margin_below = 2;
+            let scroll_offset = if reversed_selecting_index > visible_height - margin_below - 1 {
+                reversed_selecting_index - (visible_height - margin_below - 1)
+            } else {
+                0
+            };
 
             let start_index = scroll_offset;
             let end_index = (scroll_offset + visible_height).min(items_count);
@@ -301,16 +312,17 @@ impl Widget for &App {
                 .collect();
 
             List::new(items)
-                .block(Block::default().borders(Borders::ALL))
+                .block(Block::default())
                 .render(list_area, buffer);
         }
         // テキスト入力部分
         {
+            let input_area = chunks[1];
             let input_text = self.input.to_string();
 
             Paragraph::new(input_text)
-                .block(Block::default().borders(Borders::ALL))
-                .render(chunks[1], buffer);
+                .block(Block::default().borders(Borders::TOP))
+                .render(input_area, buffer);
         }
     }
 }
