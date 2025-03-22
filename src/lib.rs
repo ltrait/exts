@@ -15,7 +15,7 @@ use ratatui::{
     style::Style,
     widgets::{Block, Borders, List, Paragraph, Widget},
 };
-use tracing::{debug, info, info_span};
+use tracing::{debug, info};
 use tui_input::{Input, backend::crossterm::EventHandler};
 
 pub use ratatui::style;
@@ -163,13 +163,14 @@ impl<'a> App {
                 // TODO: 毎回futureを生成し直していると
                 // dropした場合にバグるかも。あと必ず、rx.recvが早い場合何も表示されなくなっちゃうかも
                 from = prepare.fuse() => {
-                    info_span!("Merging");
+                    info!("Merging");
                     let (has_more, _) = join!(
                         batcher.merge(&mut self.buffer, from),
                         tx.send(Event::Refresh),
                     );
 
                     self.has_more = has_more?;
+                    info!("Merged");
                 }
                 event_like = rx.recv().fuse() => {
                     info!("Caught event-like");
