@@ -93,7 +93,7 @@ impl<'a> UI<'a> for Tui {
     async fn run<Cusion: 'a + Send>(
         &self,
         mut batcher: Batcher<'a, Cusion, Self::Context>,
-    ) -> Result<Cusion> {
+    ) -> Result<Option<Cusion>> {
         let mut terminal = ratatui::init_with_options(TerminalOptions {
             viewport: self.config.viewport.clone(),
         });
@@ -106,7 +106,11 @@ impl<'a> UI<'a> for Tui {
 
         self.exit(&mut terminal)?;
 
-        batcher.compute_cusion(i?)
+        Ok(if let Some(id) = i? {
+            Some(batcher.compute_cusion(id)?)
+        } else {
+            None
+        })
     }
 }
 
@@ -122,6 +126,7 @@ struct App {
     buffer: Buffer<(TuiEntry, usize)>,
     has_more: bool,
     tx: Option<mpsc::Sender<Event>>,
+    selected: bool,
 }
 
 impl App {
@@ -135,6 +140,7 @@ impl App {
             buffer: Buffer::default(),
             tx: None,
             cursor_pos: None.into(),
+            selected: false,
         }
     }
 }
@@ -170,7 +176,7 @@ impl<'a> App {
         &mut self,
         terminal: &mut DefaultTerminal,
         batcher: &mut Batcher<'a, Cusion, TuiEntry>,
-    ) -> Result<usize> {
+    ) -> Result<Option<usize>> {
         let (tx, mut rx) = mpsc::channel(100);
 
         tokio::spawn(Event::terminal_event_listener(tx.clone()));
@@ -219,9 +225,11 @@ impl<'a> App {
             }
         }
 
-        Ok({
+        Ok(if self.selected {
             let mut pos = Position(self.selecting_i);
-            self.buffer.next(&mut pos).unwrap().1
+            Some(self.buffer.next(&mut pos).unwrap().1)
+        } else {
+            None
         })
     }
 
@@ -259,10 +267,11 @@ impl<'a> App {
     async fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
         match (key_event.code, key_event.modifiers) {
             (KeyCode::Enter, _) => {
+                self.selected = true;
                 self.exit();
             }
             (KeyCode::Char('c'), KeyModifiers::CONTROL)
-            | (KeyCode::Char('d'), KeyModifiers::CONTROL) => bail!("item was not selected"),
+            | (KeyCode::Char('d'), KeyModifiers::CONTROL) => self.exit(),
             (KeyCode::Up, _) | (KeyCode::Char('k'), KeyModifiers::CONTROL) => {
                 self.selecting_i = (self.selecting_i + 1).min(self.buffer.len().saturating_sub(1));
             }
