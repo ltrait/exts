@@ -10,8 +10,9 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
-    DefaultTerminal, Frame, TerminalOptions,
+    DefaultTerminal, Frame, Terminal, TerminalOptions,
     layout::{Constraint, Direction, Layout},
+    prelude::Backend,
     style::Style,
     widgets::{Block, Borders, List, Paragraph, Widget},
 };
@@ -50,6 +51,32 @@ impl Tui {
     pub fn new(config: TuiConfig) -> Self {
         Self { config }
     }
+
+    fn enter<B: Backend>(&self, terminal: &mut Terminal<B>) -> Result<()> {
+        enable_raw_mode()?;
+        terminal.clear()?;
+
+        Ok(())
+    }
+
+    fn exit<B: Backend>(&self, terminal: &mut Terminal<B>) -> Result<()> {
+        use crossterm::{
+            cursor::MoveTo,
+            terminal::{Clear, ClearType},
+        };
+        use std::io::Write;
+
+        let mut stdout = std::io::stdout();
+        let area = terminal.get_frame().area();
+
+        crossterm::execute!(stdout, MoveTo(0, area.y), Clear(ClearType::FromCursorDown),)?;
+        stdout.flush()?;
+
+        disable_raw_mode()?;
+        ratatui::restore();
+
+        Ok(())
+    }
 }
 
 type StyledText = (String, Style);
@@ -71,15 +98,13 @@ impl<'a> UI<'a> for Tui {
             viewport: self.config.viewport.clone(),
         });
 
-        enable_raw_mode()?;
-        terminal.clear()?;
+        self.enter(&mut terminal)?;
 
         let i = App::new(self.config.clone())
             .run(&mut terminal, &mut batcher)
             .await;
 
-        disable_raw_mode()?;
-        ratatui::restore();
+        self.exit(&mut terminal)?;
 
         batcher.compute_cusion(i?)
     }
@@ -237,7 +262,7 @@ impl<'a> App {
                 self.exit();
             }
             (KeyCode::Char('c'), KeyModifiers::CONTROL)
-            | (KeyCode::Char('d'), KeyModifiers::CONTROL) => self.exit(),
+            | (KeyCode::Char('d'), KeyModifiers::CONTROL) => bail!("item was not selected"),
             (KeyCode::Up, _) | (KeyCode::Char('k'), KeyModifiers::CONTROL) => {
                 self.selecting_i = (self.selecting_i + 1).min(self.buffer.len().saturating_sub(1));
             }
