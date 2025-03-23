@@ -10,7 +10,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
-    DefaultTerminal, Frame, TerminalOptions, Viewport,
+    DefaultTerminal, Frame, TerminalOptions,
     layout::{Constraint, Direction, Layout},
     style::Style,
     widgets::{Block, Borders, List, Paragraph, Widget},
@@ -18,7 +18,7 @@ use ratatui::{
 use tracing::{debug, info};
 use tui_input::{Input, backend::crossterm::EventHandler};
 
-pub use ratatui::style;
+pub use ratatui::{Viewport, style};
 
 use futures::{FutureExt as _, join, select};
 use tokio::sync::mpsc;
@@ -31,15 +31,15 @@ pub struct Tui {
 
 #[derive(Clone)]
 pub struct TuiConfig {
-    lines: u16,
+    viewport: Viewport,
     selecting: char,
     no_selecting: char,
 }
 
 impl TuiConfig {
-    pub fn new(lines: u16, selecting: char, no_selecting: char) -> Self {
+    pub fn new(viewport: Viewport, selecting: char, no_selecting: char) -> Self {
         Self {
-            lines,
+            viewport,
             selecting,
             no_selecting,
         }
@@ -68,7 +68,7 @@ impl<'a> UI<'a> for Tui {
         mut batcher: Batcher<'a, Cusion, Self::Context>,
     ) -> Result<Cusion> {
         let mut terminal = ratatui::init_with_options(TerminalOptions {
-            viewport: Viewport::Inline(self.config.lines),
+            viewport: self.config.viewport.clone(),
         });
 
         enable_raw_mode()?;
