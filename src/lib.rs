@@ -76,12 +76,12 @@ impl<'a> UI<'a> for Tui {
 
         let i = App::new(self.config.clone())
             .run(&mut terminal, &mut batcher)
-            .await?;
+            .await;
 
         disable_raw_mode()?;
         ratatui::restore();
 
-        batcher.compute_cusion(i)
+        batcher.compute_cusion(i?)
     }
 }
 
