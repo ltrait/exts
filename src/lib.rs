@@ -41,19 +41,19 @@ where
     viewport: Viewport,
     selecting: char,
     no_selecting: char,
-    key: Option<F>,
+    keybinder: F,
 }
 
 impl<F> TuiConfig<F>
 where
     F: Fn(&KeyEvent) -> Action + Clone,
 {
-    pub fn new(viewport: Viewport, selecting: char, no_selecting: char, key: F) -> Self {
+    pub fn new(viewport: Viewport, selecting: char, no_selecting: char, keybinder: F) -> Self {
         Self {
             viewport,
             selecting,
             no_selecting,
-            key: Some(key),
+            keybinder,
         }
     }
 }
@@ -298,7 +298,7 @@ where
     }
 
     async fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
-        match (self.config.key.as_ref().unwrap())(&key_event) {
+        match (self.config.keybinder)(&key_event) {
             Action::Select => {
                 self.selected = true;
                 self.exit();
