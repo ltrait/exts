@@ -14,7 +14,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     prelude::Backend,
     style::Style,
-    widgets::{Block, Borders, List, Paragraph, Widget},
+    widgets::{Block, Borders, Clear, List, Paragraph, Widget},
 };
 use tracing::{debug, info};
 use tui_input::{Input, backend::crossterm::EventHandler};
@@ -312,7 +312,7 @@ impl Widget for &App {
             .split(area);
 
         // エントリーの部分
-        {
+        if self.buffer.len() > 0 {
             let list_area = chunks[0];
 
             let items_count = self.buffer.len();
@@ -361,6 +361,10 @@ impl Widget for &App {
             List::new(items)
                 .block(Block::default())
                 .render(list_area, buffer);
+        } else {
+            let list_area = chunks[0];
+
+            Clear.render(list_area, buffer);
         }
         // テキスト入力部分
         {
