@@ -271,7 +271,8 @@ impl<'a> App {
                 self.exit();
             }
             (KeyCode::Char('c'), KeyModifiers::CONTROL)
-            | (KeyCode::Char('d'), KeyModifiers::CONTROL) => self.exit(),
+            | (KeyCode::Char('d'), KeyModifiers::CONTROL)
+            | (KeyCode::Esc, _) => self.exit(),
             (KeyCode::Up, _) | (KeyCode::Char('k'), KeyModifiers::CONTROL) => {
                 self.selecting_i = (self.selecting_i + 1).min(self.buffer.len().saturating_sub(1));
             }
