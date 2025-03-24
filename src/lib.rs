@@ -26,29 +26,43 @@ use tokio::sync::mpsc;
 
 use std::sync::RwLock;
 
-pub struct Tui {
-    config: TuiConfig,
+pub struct Tui<F>
+where
+    F: Fn(&KeyEvent) -> Action + Clone,
+{
+    config: TuiConfig<F>,
 }
 
 #[derive(Clone)]
-pub struct TuiConfig {
+pub struct TuiConfig<F>
+where
+    F: Fn(&KeyEvent) -> Action + Clone,
+{
     viewport: Viewport,
     selecting: char,
     no_selecting: char,
+    keybinder: F,
 }
 
-impl TuiConfig {
-    pub fn new(viewport: Viewport, selecting: char, no_selecting: char) -> Self {
+impl<F> TuiConfig<F>
+where
+    F: Fn(&KeyEvent) -> Action + Clone,
+{
+    pub fn new(viewport: Viewport, selecting: char, no_selecting: char, keybinder: F) -> Self {
         Self {
             viewport,
             selecting,
             no_selecting,
+            keybinder,
         }
     }
 }
 
-impl Tui {
-    pub fn new(config: TuiConfig) -> Self {
+impl<F> Tui<F>
+where
+    F: Fn(&KeyEvent) -> Action + Clone,
+{
+    pub fn new(config: TuiConfig<F>) -> Self {
         Self { config }
     }
 
@@ -87,7 +101,10 @@ pub struct TuiEntry {
     pub text: StyledText,
 }
 
-impl<'a> UI<'a> for Tui {
+impl<'a, F> UI<'a> for Tui<F>
+where
+    F: Fn(&KeyEvent) -> Action + Send + Sync + Clone,
+{
     type Context = TuiEntry;
 
     async fn run<Cusion: 'a + Send>(
@@ -115,8 +132,11 @@ impl<'a> UI<'a> for Tui {
 }
 
 // なんのArc, Mutex, RwLockを使うか検討する必要がある。renderの中で使えないと意味ないし
-struct App {
-    config: TuiConfig,
+struct App<F>
+where
+    F: Fn(&KeyEvent) -> Action + Clone,
+{
+    config: TuiConfig<F>,
 
     exit: bool,
     // 上が0
@@ -129,8 +149,11 @@ struct App {
     selected: bool,
 }
 
-impl App {
-    fn new(config: TuiConfig) -> Self {
+impl<F> App<F>
+where
+    F: Fn(&KeyEvent) -> Action + Clone,
+{
+    fn new(config: TuiConfig<F>) -> Self {
         Self {
             has_more: true,
             config,
@@ -147,8 +170,17 @@ impl App {
 
 #[derive(Debug)]
 enum Event {
-    CEvent(CEvent),
+    Key(KeyEvent),
     Refresh,
+    Input,
+}
+
+#[derive(Debug, Clone)]
+pub enum Action {
+    Select,
+    ExitWithoutSelect,
+    Up,
+    Down,
     Input,
 }
 
@@ -160,18 +192,19 @@ impl Event {
             let crossterm_event = reader.next().fuse();
             std::thread::sleep(std::time::Duration::from_millis(10));
 
-            if let Some(Ok(evt)) = crossterm_event.await {
-                if let CEvent::Key(key) = evt {
-                    if key.kind == KeyEventKind::Press {
-                        tx.send(Event::CEvent(CEvent::Key(key))).await.unwrap();
-                    }
+            if let Some(Ok(CEvent::Key(key))) = crossterm_event.await {
+                if key.kind == KeyEventKind::Press {
+                    tx.send(Event::Key(key)).await.unwrap();
                 }
             }
         }
     }
 }
 
-impl<'a> App {
+impl<'a, F> App<F>
+where
+    F: Fn(&KeyEvent) -> Action + Clone,
+{
     async fn run<Cusion: Send + 'a>(
         &mut self,
         terminal: &mut DefaultTerminal,
@@ -248,7 +281,7 @@ impl<'a> App {
         match event {
             // it's important to check that the event is a key press event as
             // crossterm also emits key release and repeat events on Windows.
-            Event::CEvent(CEvent::Key(key_event)) if key_event.kind == KeyEventKind::Press => {
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 info!("Handling KeyInput");
                 self.handle_key_event(key_event).await?
             }
@@ -265,24 +298,23 @@ impl<'a> App {
     }
 
     async fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
-        match (key_event.code, key_event.modifiers) {
-            (KeyCode::Enter, _) => {
+        match (self.config.keybinder)(&key_event) {
+            Action::Select => {
                 self.selected = true;
                 self.exit();
             }
-            (KeyCode::Char('c'), KeyModifiers::CONTROL)
-            | (KeyCode::Char('d'), KeyModifiers::CONTROL)
-            | (KeyCode::Esc, _) => self.exit(),
-            (KeyCode::Up, _) | (KeyCode::Char('k'), KeyModifiers::CONTROL) => {
+            Action::ExitWithoutSelect => self.exit(),
+            Action::Up => {
                 self.selecting_i = (self.selecting_i + 1).min(self.buffer.len().saturating_sub(1));
             }
-            (KeyCode::Down, _) | (KeyCode::Char('j'), KeyModifiers::CONTROL) => {
+            Action::Down => {
                 self.selecting_i = self.selecting_i.saturating_sub(1);
             }
             _ => {
-                if !(self.input.cursor() == 0 && key_event.code == KeyCode::Backspace)
-                    && !(self.input.cursor() == self.input.value().len()
-                        && key_event.code == KeyCode::Delete)
+                if !(self.input.cursor() == 0
+                    && (key_event.code == KeyCode::Backspace || key_event.code == KeyCode::Left)
+                    || self.input.cursor() == self.input.value().len()
+                        && (key_event.code == KeyCode::Delete || key_event.code == KeyCode::Right))
                 {
                     self.input
                         .handle_event(&crossterm::event::Event::Key(key_event))
@@ -305,7 +337,22 @@ impl<'a> App {
     }
 }
 
-impl Widget for &App {
+pub fn sample_keyconfig(key: &KeyEvent) -> Action {
+    match (key.code, key.modifiers) {
+        (KeyCode::Enter, _) => Action::Select,
+        (KeyCode::Char('c'), KeyModifiers::CONTROL)
+        | (KeyCode::Char('d'), KeyModifiers::CONTROL)
+        | (KeyCode::Esc, _) => Action::ExitWithoutSelect,
+        (KeyCode::Up, _) | (KeyCode::Char('k'), KeyModifiers::CONTROL) => Action::Up,
+        (KeyCode::Down, _) | (KeyCode::Char('j'), KeyModifiers::CONTROL) => Action::Down,
+        _ => Action::Input,
+    }
+}
+
+impl<F> Widget for &App<F>
+where
+    F: Fn(&KeyEvent) -> Action + Clone,
+{
     fn render(self, area: ratatui::prelude::Rect, buffer: &mut ratatui::prelude::Buffer) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -313,7 +360,7 @@ impl Widget for &App {
             .split(area);
 
         // エントリーの部分
-        if self.buffer.len() > 0 {
+        if !self.buffer.is_empty() {
             let list_area = chunks[0];
 
             let items_count = self.buffer.len();
