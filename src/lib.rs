@@ -43,15 +43,4 @@ impl<'a> NucleoMatcher {
             matcher: Arc::new(Mutex::new(Matcher::new(config))),
         }
     }
-
-    pub fn into_sorter(self) -> impl Sorter<'a, Context = Context> {
-        ScorerSorter::new(self)
-    }
-
-    pub fn into_filter<F>(self, predicate: F) -> impl Filter<'a, Context = Context>
-    where
-        F: Fn(u32) -> bool + Send + 'a,
-    {
-        ScorerFilter::new(self, predicate)
-    }
 }
