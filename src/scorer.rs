@@ -79,10 +79,3 @@ where
         (self.1)(self.0.predicate_score(ctx, input))
     }
 }
-
-impl<'a, T, C> T
-where
-    T: Scorer<Context = C> + Send,
-    C: 'a,
-{
-}
