@@ -1,6 +1,56 @@
 use ltrait::{filter::FilterWrapper, Filter};
 use std::marker::PhantomData;
 
+impl<'a, T> FilterExt<'a> for T where T: Filter<'a> {}
+
+pub trait FilterExt<'a>: Filter<'a> {
+    fn to_if<Cusion, F, TransF>(
+        self,
+        f: F,
+        transformer: TransF,
+    ) -> impl Filter<'a, Context = Cusion>
+    // Wrapもされる
+    where
+        Self: Sized,
+        Cusion: Sync + Send + 'a,
+        F: Fn(&Cusion) -> bool + Send + 'a,
+        TransF: Fn(&Cusion) -> <Self as Filter<'a>>::Context + Send + 'a,
+        <Self as Filter<'a>>::Context: Sync,
+    {
+        FilterIf::new(self, f, transformer)
+    }
+
+    fn reverse(self) -> impl Filter<'a, Context = <Self as Filter<'a>>::Context>
+    where
+        Self: Sized,
+        <Self as Filter<'a>>::Context: Sync,
+    {
+        ReversedFilter::new(self)
+    }
+
+    fn comb<Cusion, T, Ctx, F1, F2, F3>(
+        self,
+        transformer1: F1,
+        filter2: T,
+        transformer2: F2,
+        predicater: F3,
+    ) -> impl Filter<'a, Context = Cusion>
+    where
+        Self: Sized,
+
+        T: Filter<'a, Context = Ctx>,
+
+        F1: Fn(&Cusion) -> <Self as Filter<'a>>::Context + Send + 'a,
+        F2: Fn(&Cusion) -> Ctx + Send + 'a,
+        F3: Fn(bool, bool) -> bool + Send + 'a,
+
+        Cusion: Sync + 'a,
+        Ctx: 'a,
+    {
+        FilterComb::new(self, transformer1, filter2, transformer2, predicater)
+    }
+}
+
 pub struct FilterComb<'a, Cusion, T1, T2, C1, C2, F1, F2, F3>
 where
     F1: Fn(&Cusion) -> C1 + Send + 'a,
@@ -21,7 +71,7 @@ where
     transformer1: F1,
     transformer2: F2,
 
-    preficater: F3,
+    predicater: F3,
 
     _cusion: PhantomData<&'a Cusion>,
 }
@@ -44,7 +94,7 @@ where
     type Context = Cusion;
 
     fn predicate(&self, ctx: &Self::Context, input: &str) -> bool {
-        (self.preficater)(
+        (self.predicater)(
             self.filter1.predicate(&(self.transformer1)(ctx), input),
             self.filter2.predicate(&(self.transformer2)(ctx), input),
         )
@@ -70,14 +120,14 @@ where
         transformer1: F1,
         filter2: T2,
         transformer2: F2,
-        preficater: F3,
+        predicater: F3,
     ) -> Self {
         Self {
             filter1,
             filter2,
             transformer1,
             transformer2,
-            preficater,
+            predicater,
             _cusion: PhantomData,
         }
     }

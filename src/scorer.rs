@@ -4,6 +4,24 @@ pub trait Scorer {
     fn predicate_score(&self, ctx: &Self::Context, input: &str) -> u32;
 }
 
+impl<'a, T> ScorerExt<'a> for T where T: Scorer + Sized + Send + 'a {}
+
+pub trait ScorerExt<'a>: Scorer + Sized + Send + 'a {
+    fn into_sorter(self) -> impl Sorter<'a, Context = Self::Context>
+    where
+        <Self as Scorer>::Context: 'a,
+    {
+        ScorerSorter(self)
+    }
+
+    fn into_filter<F>(self, predicate: F) -> impl Filter<'a, Context = Self::Context>
+    where
+        F: Fn(u32) -> bool + Send + 'a,
+    {
+        ScorerFilter(self, predicate)
+    }
+}
+
 use ltrait::Filter;
 use ltrait::Sorter;
 
@@ -62,19 +80,9 @@ where
     }
 }
 
-// impl<'a, T, C> T
-// where
-//     T: Scorer<Context = C> + Send,
-//     C: 'a,
-// {
-//     pub fn into_sorter(self) -> impl Sorter<'a, Context = C> {
-//         ScorerSorter(self)
-//     }
-//
-//     pub fn into_filter<F>(self, predicate: F) -> impl Filter<'a, Context = C>
-//     where
-//         F: Fn(u32) -> bool + Send,
-//     {
-//         ScorerFilter(self, predicate)
-//     }
-// }
+impl<'a, T, C> T
+where
+    T: Scorer<Context = C> + Send,
+    C: 'a,
+{
+}

@@ -14,6 +14,34 @@ where
     _ctx: PhantomData<&'a Cusion>,
 }
 
+impl<'a, T> SorterExt<'a> for T where T: Sorter<'a> {}
+
+pub trait SorterExt<'a>: Sorter<'a> {
+    fn to_if<Cusion, F, TransF>(
+        self,
+        f: F,
+        transformer: TransF,
+    ) -> impl Sorter<'a, Context = Cusion>
+    // Wrapもされる
+    where
+        Self: Sized,
+        Cusion: Sync + Send + 'a,
+        F: Fn(&Cusion) -> bool + Send + 'a,
+        TransF: Fn(&Cusion) -> <Self as Sorter<'a>>::Context + Send + 'a,
+        <Self as Sorter<'a>>::Context: Sync,
+    {
+        SorterIf::new(self, f, transformer)
+    }
+
+    fn reverse(self) -> impl Sorter<'a, Context = <Self as Sorter<'a>>::Context>
+    where
+        Self: Sized,
+        <Self as Sorter<'a>>::Context: Sync,
+    {
+        ReversedSorter::new(self)
+    }
+}
+
 impl<'a, Cusion, F, InnerT, TransF, Ctx>
     SorterIf<'a, SorterWrapper<'a, Ctx, InnerT, TransF, Cusion>, Cusion, F>
 where
