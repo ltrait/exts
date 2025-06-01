@@ -7,12 +7,13 @@ use ltrait::{
 
 use crossterm::{
     event::{Event as CEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
+    execute,
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
-    DefaultTerminal, Frame, Terminal, TerminalOptions,
+    Frame, Terminal, TerminalOptions,
     layout::{Constraint, Direction, Layout},
-    prelude::Backend,
+    prelude::{Backend, CrosstermBackend},
     style::Style,
     widgets::{Block, Borders, Clear, List, Paragraph, Widget},
 };
@@ -24,13 +25,87 @@ pub use ratatui::{Viewport, style};
 use futures::{FutureExt as _, join, select};
 use tokio::sync::mpsc;
 
-use std::sync::RwLock;
+use std::{io::Write, sync::RwLock};
 
 pub struct Tui<F>
 where
     F: Fn(&KeyEvent) -> Action + Clone,
 {
     config: TuiConfig<F>,
+}
+
+impl<'a, F> UI<'a> for Tui<F>
+where
+    F: Fn(&KeyEvent) -> Action + Send + Sync + Clone,
+{
+    type Context = TuiEntry;
+
+    async fn run<Cusion: 'a + Send>(
+        &self,
+        mut batcher: Batcher<'a, Cusion, Self::Context>,
+    ) -> Result<Option<Cusion>> {
+        let tty = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open("/dev/tty")?;
+
+        let backend = CrosstermBackend::new(tty);
+
+        let mut terminal = Terminal::with_options(
+            backend,
+            TerminalOptions {
+                viewport: self.config.viewport.clone(),
+            },
+        )?;
+
+        self.enter(&mut terminal)?;
+
+        let i = App::new(self.config.clone())
+            .run(&mut terminal, &mut batcher)
+            .await;
+
+        self.exit(&mut terminal)?;
+
+        Ok(if let Some(id) = i? {
+            Some(batcher.compute_cusion(id)?)
+        } else {
+            None
+        })
+    }
+}
+
+impl<F> Tui<F>
+where
+    F: Fn(&KeyEvent) -> Action + Clone,
+{
+    pub fn new(config: TuiConfig<F>) -> Self {
+        Self { config }
+    }
+
+    fn enter<B: Backend + Write>(&self, terminal: &mut Terminal<B>) -> Result<()> {
+        execute!(
+            terminal.backend_mut(),
+            crossterm::terminal::EnterAlternateScreen,
+            crossterm::event::EnableMouseCapture
+        )?;
+        enable_raw_mode()?;
+        terminal.clear()?;
+
+        Ok(())
+    }
+
+    fn exit<B: Backend + Write>(&self, terminal: &mut Terminal<B>) -> Result<()> {
+        execute!(
+            terminal.backend_mut(),
+            crossterm::terminal::LeaveAlternateScreen,
+            crossterm::event::DisableMouseCapture
+        )?;
+
+        disable_raw_mode()?;
+        ratatui::restore();
+
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -58,77 +133,12 @@ where
     }
 }
 
-impl<F> Tui<F>
-where
-    F: Fn(&KeyEvent) -> Action + Clone,
-{
-    pub fn new(config: TuiConfig<F>) -> Self {
-        Self { config }
-    }
-
-    fn enter<B: Backend>(&self, terminal: &mut Terminal<B>) -> Result<()> {
-        enable_raw_mode()?;
-        terminal.clear()?;
-
-        Ok(())
-    }
-
-    fn exit<B: Backend>(&self, terminal: &mut Terminal<B>) -> Result<()> {
-        use crossterm::{
-            cursor::MoveTo,
-            terminal::{Clear, ClearType},
-        };
-        use std::io::Write;
-
-        let mut stdout = std::io::stdout();
-        let area = terminal.get_frame().area();
-
-        crossterm::execute!(stdout, MoveTo(0, area.y), Clear(ClearType::FromCursorDown),)?;
-        stdout.flush()?;
-
-        disable_raw_mode()?;
-        ratatui::restore();
-
-        Ok(())
-    }
-}
-
 type StyledText = (String, Style);
 
 /// `<SelectingStatus> <icon> <title> <sub_string>`
 /// SelectingStatus in above is a char
 pub struct TuiEntry {
     pub text: StyledText,
-}
-
-impl<'a, F> UI<'a> for Tui<F>
-where
-    F: Fn(&KeyEvent) -> Action + Send + Sync + Clone,
-{
-    type Context = TuiEntry;
-
-    async fn run<Cusion: 'a + Send>(
-        &self,
-        mut batcher: Batcher<'a, Cusion, Self::Context>,
-    ) -> Result<Option<Cusion>> {
-        let mut terminal = ratatui::init_with_options(TerminalOptions {
-            viewport: self.config.viewport.clone(),
-        });
-
-        self.enter(&mut terminal)?;
-
-        let i = App::new(self.config.clone())
-            .run(&mut terminal, &mut batcher)
-            .await;
-
-        self.exit(&mut terminal)?;
-
-        Ok(if let Some(id) = i? {
-            Some(batcher.compute_cusion(id)?)
-        } else {
-            None
-        })
-    }
 }
 
 // なんのArc, Mutex, RwLockを使うか検討する必要がある。renderの中で使えないと意味ないし
@@ -205,9 +215,9 @@ impl<'a, F> App<F>
 where
     F: Fn(&KeyEvent) -> Action + Clone,
 {
-    async fn run<Cusion: Send + 'a>(
+    async fn run<Cusion: Send + 'a, B: Backend>(
         &mut self,
-        terminal: &mut DefaultTerminal,
+        terminal: &mut Terminal<B>,
         batcher: &mut Batcher<'a, Cusion, TuiEntry>,
     ) -> Result<Option<usize>> {
         let (tx, mut rx) = mpsc::channel(100);
