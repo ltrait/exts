@@ -44,12 +44,17 @@ where
         &self,
         mut batcher: Batcher<'a, Cusion, Self::Context>,
     ) -> Result<Option<Cusion>> {
-        let tty = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open("/dev/tty")?;
+        let writer: Box<dyn Write + Send> = if self.config.use_tty {
+            let tty = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open("/dev/tty")?;
+            Box::new(tty)
+        } else {
+            Box::new(std::io::stdout())
+        };
 
-        let backend = CrosstermBackend::new(tty);
+        let backend = CrosstermBackend::new(writer);
 
         let mut terminal = Terminal::with_options(
             backend,
@@ -114,6 +119,7 @@ where
     F: Fn(&KeyEvent) -> Action + Clone,
 {
     viewport: Viewport,
+    use_tty: bool,
     selecting: char,
     no_selecting: char,
     keybinder: F,
@@ -123,9 +129,16 @@ impl<F> TuiConfig<F>
 where
     F: Fn(&KeyEvent) -> Action + Clone,
 {
-    pub fn new(viewport: Viewport, selecting: char, no_selecting: char, keybinder: F) -> Self {
+    pub fn new(
+        viewport: Viewport,
+        use_tty: bool,
+        selecting: char,
+        no_selecting: char,
+        keybinder: F,
+    ) -> Self {
         Self {
             viewport,
+            use_tty,
             selecting,
             no_selecting,
             keybinder,
