@@ -3,6 +3,18 @@ name = "ltrait-ui-tui"
 version = "0.1.0"
 edition = "2024"
 
+description = "the TUI for LTrait"
+
+authors = ["satler <satler@satler.dev>"]
+
+documentation = "https://docs.rs/ltrait-ui-tui/"
+homepage = "https://crates.io/crates/ltrait-ui-tui"
+repository = "https://github.com/ltrait/ui-tui"
+
+exclude = [".envrc"]
+
+license = "MIT"
+
 [package.metadata.typos.default.extend-words]
 ratatui = "ratatui"
 
