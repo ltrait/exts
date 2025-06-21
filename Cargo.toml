@@ -1,6 +1,6 @@
 [package]
 name = "ltrait-ui-tui"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 
 description = "the TUI for LTrait"
@@ -19,7 +19,7 @@ license = "MIT"
 ratatui = "ratatui"
 
 [dependencies]
-ltrait = "0.10.0"
+ltrait = "1.0.0"
 
 crossterm = { version = "0.29.0", features = ["event-stream"] }
 ratatui = "0.29.0"
