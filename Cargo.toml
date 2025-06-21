@@ -14,9 +14,9 @@ repository = "https://github.com/ltrait/source-desktop"
 license = "MIT"
 
 [dependencies]
-ltrait = "0.8.5"
+ltrait = "1.0.0"
 
-freedesktop-icons = "0.3.1"
+freedesktop-icons = "0.4.0"
 freedesktop-desktop-entry = "0.7.8"
 base64 = "0.22.1"
 image = "0.25.5"
