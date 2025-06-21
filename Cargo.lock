@@ -300,9 +300,9 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "ltrait"
-version = "0.10.2"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bab03b5865020218bb9a970d776f76cad7f816d145f8fb792f2150d514fa17e"
+checksum = "f3642c00fb30c455a5ddeefd213059317879295004b5d4e458d442a44c14aa24"
 dependencies = [
  "async-trait",
  "color-eyre",

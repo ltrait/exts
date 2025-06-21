@@ -3,5 +3,17 @@ name = "ltrait-extra"
 version = "0.1.0"
 edition = "2021"
 
+description = "Extra components and helpers for LTrait"
+
+authors = ["satler <satler@satler.dev>"]
+
+documentation = "https://docs.rs/ltrait-extra/"
+homepage = "https://crates.io/crates/ltrait-extra"
+repository = "https://github.com/ltrait/extra"
+
+exclude = [".envrc"]
+
+license = "MIT"
+
 [dependencies]
 ltrait = "1.0.0"
