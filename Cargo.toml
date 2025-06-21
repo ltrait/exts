@@ -6,5 +6,5 @@ edition = "2024"
 [dependencies]
 chrono = "0.4.40"
 dirs = "6.0.0"
-ltrait = "0.10.0"
-rusqlite = { version = "0.34.0", features = ["chrono", "bundled"] }
+ltrait = "1.0.0"
+rusqlite = { version = "0.36.0", features = ["chrono", "bundled"] }
