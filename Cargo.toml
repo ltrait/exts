@@ -1,6 +1,6 @@
 [package]
 name = "ltrait-scorer-nucleo"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 
 description = "A scorer(using ltrait-extra) for ltrait"
