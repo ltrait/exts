@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use ltrait::{Filter, Sorter};
-use ltrait_extra::scorer::{Scorer, ScorerFilter, ScorerSorter};
+use ltrait_extra::scorer::Scorer;
 pub use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
 
@@ -29,7 +28,7 @@ impl Scorer for NucleoMatcher {
     }
 }
 
-impl<'a> NucleoMatcher {
+impl NucleoMatcher {
     pub fn new(match_path: bool, case: CaseMatching, normalization: Normalization) -> Self {
         let config = if match_path {
             Config::DEFAULT.match_paths()
