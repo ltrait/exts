@@ -1,19 +1,18 @@
 [package]
 name = "ltrait-extra"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 
 description = "Extra components and helpers for LTrait"
 
-authors = ["satler <satler@satler.dev>"]
+authors.workspace = true
 
 documentation = "https://docs.rs/ltrait-extra/"
 homepage = "https://crates.io/crates/ltrait-extra"
-repository = "https://github.com/ltrait/extra"
 
-exclude = [".envrc"]
-
-license = "MIT"
+repository.workspace = true
+exclude.workspace = true
+license.workspace = true
 
 [dependencies]
-ltrait = "1.0.0"
+ltrait = { workspace = true }
