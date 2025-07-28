@@ -8,7 +8,8 @@ authors = ["satler <satler@satler.dev>"]
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/ltrait/exts"
-rust-version = "stable"
+rust-version = "1.88.0"
 exclude = [".envrc"]
 
 [workspace.dependencies]
+ltrait = "1.1.0"
