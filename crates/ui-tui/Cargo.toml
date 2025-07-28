@@ -1,0 +1,34 @@
+[package]
+name = "ltrait-ui-tui"
+version = "0.1.2"
+edition = "2024"
+
+description = "the TUI for LTrait"
+
+authors = ["satler <satler@satler.dev>"]
+
+documentation = "https://docs.rs/ltrait-ui-tui/"
+homepage = "https://crates.io/crates/ltrait-ui-tui"
+repository = "https://github.com/ltrait/ui-tui"
+
+exclude = [".envrc"]
+
+license = "MIT"
+
+[package.metadata.typos.default.extend-words]
+ratatui = "ratatui"
+
+[dependencies]
+ltrait = "1.0.0"
+
+crossterm = { version = "0.29.0", features = ["event-stream"] }
+ratatui = "0.29.0"
+tui-input = "0.12.1"
+
+futures = "0.3.31"
+tokio = { version = "1.44.1", features = [
+  "rt",
+  "sync",
+  "time",
+], default-features = false }
+tracing = "0.1.41"
