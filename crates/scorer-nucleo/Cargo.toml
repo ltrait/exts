@@ -1,21 +1,23 @@
 [package]
 name = "ltrait-scorer-nucleo"
 version = "0.1.1"
-edition = "2024"
+edition.workspace = true
 
 description = "A scorer(using ltrait-extra) for ltrait"
 
-authors = ["satler <satler@satler.dev>"]
+authors.workspace = true
 
 documentation = "https://docs.rs/ltrait-scorer-nucleo/"
 homepage = "https://crates.io/crates/ltrait-scorer-nucleo"
-repository = "https://github.com/ltrait/scorer-nucleo"
+repository.workspace = true
 
-license = "MIT"
+exclude.workspace = true
+
+license.workspace = true
 
 [dependencies]
-ltrait = "1.0.0"
-ltrait-extra = "0.1.0"
+ltrait = { workspace = true }
+ltrait-extra = { path = "../extra" }
 
 nucleo-matcher = "0.3.1"
 

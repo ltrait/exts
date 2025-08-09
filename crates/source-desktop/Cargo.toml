@@ -15,7 +15,7 @@ exclude.workspace = true
 license.workspace = true
 
 [dependencies]
-ltrait = "1.0.0"
+ltrait = { workspace = true }
 
 freedesktop-icons = "0.4.0"
 freedesktop-desktop-entry = "0.7.8"
