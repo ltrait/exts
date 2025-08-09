@@ -1,17 +1,18 @@
 [package]
 name = "ltrait-source-desktop"
-version = "0.4.0"
-edition = "2024"
+version = "0.4.1"
+edition.workspace = true
 
 description = "A source of FreeDesktopOrg's Desktop Entry for ltrait"
 
-authors = ["satler <satler@satler.dev>"]
+authors.workspace = true
 
 documentation = "https://docs.rs/ltrait-source-desktop/"
 homepage = "https://crates.io/crates/ltrait-source-desktop"
-repository = "https://github.com/ltrait/source-desktop"
+repository.workspace = true
 
-license = "MIT"
+exclude.workspace = true
+license.workspace = true
 
 [dependencies]
 ltrait = "1.0.0"
