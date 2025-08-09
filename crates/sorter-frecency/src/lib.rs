@@ -2,6 +2,47 @@
 //! See also [User:Jesse/NewFrecency on mozilla wiki](https://wiki.mozilla.org/User:Jesse/NewFrecency?title=User:Jesse/NewFrecency)
 //!
 //! Create a database on `<XDG_DATA_HOME>/ltrait/frecency/frecency.sqlite`
+//!
+//! # Example Usage
+//! ```rust
+//! # use ltrait_sorter_frecency::{FrecencyConfig, Frecency};
+//! # use ltrait::{color_eyre::Result, Launcher};
+//! # use std::time::Duration;
+//! #
+//! # struct DummyUI;
+//! #
+//! # impl<'a> ltrait::UI<'a> for DummyUI {
+//! #     type Context = ();
+//! #
+//! #     async fn run<Cushion: 'a + Send>(
+//! #         &self,
+//! #         _: ltrait::launcher::batcher::Batcher<'a, Cushion, Self::Context>,
+//! #     ) -> Result<Option<Cushion>> {
+//! #         unimplemented!()
+//! #     }
+//! # }
+//! #
+//! # fn main() -> Result<()> {
+//! #
+//! let config = FrecencyConfig {
+//!     half_life: Duration::from_secs(30 * 60 * 60 * 24), // One month
+//!     type_ident: "simple-test".into(),
+//! };
+//!
+//! let launcher = Launcher::default()
+//!     .set_ui(DummyUI, |c| unimplemented!())
+//!     // Cushion is ltrait_sorter_frecency::Context
+//!     .add_raw_sorter(Frecency::new(config.clone())?)
+//!     .add_action(Frecency::new(config)?, |c|
+//!         ltrait_sorter_frecency::Context {
+//!             ident: c.ident.clone(),
+//!             bonus: 15.,
+//!         },
+//!     );
+//! #
+//! # Ok(()) }
+//! ```
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -9,19 +50,20 @@ use std::time::Duration;
 use chrono::{DateTime, Utc};
 use ltrait::color_eyre::eyre::{OptionExt, Result, WrapErr};
 use ltrait::{Action, Sorter};
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 
 /// The context of ltrait-sorter-frecency
 /// The `ident` must be unique within the same type_ident (if you want it to be judged as different)
 ///
 /// If `bonus` is 0 and it is the first visit, the final score will also be 0 and will not increase. Set the `bonus` appropriately
 /// I don't know how much is optimal, so you'll have to try different things for a while.
+#[derive(Debug, Clone)]
 pub struct Context {
     pub ident: String,
     pub bonus: f64,
 }
 
-/// * `samples_count` pick up numbers that used to caliculate the score
+#[derive(Debug, Clone)]
 pub struct FrecencyConfig {
     pub half_life: Duration,
     pub type_ident: String,
