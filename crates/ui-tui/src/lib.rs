@@ -414,16 +414,12 @@ where
 
             // 選択されたアイテムが常に表示されるようにスクロール位置を計算
             let margin_below = 2;
-            let scroll_offset = if reversed_selecting_index > visible_height - margin_below - 1 {
-                reversed_selecting_index - (visible_height - margin_below - 1)
-            } else {
-                0
-            };
+            let scroll_offset = reversed_selecting_index.saturating_sub(visible_height - margin_below - 1);
 
             let start_index = scroll_offset;
             let end_index = (scroll_offset + visible_height).min(items_count);
 
-            let mut items: Vec<_> = items
+            let items: Vec<_> = items
                 .into_iter()
                 .skip(start_index)
                 .take(end_index - start_index)
