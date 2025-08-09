@@ -282,7 +282,7 @@ where
         }
 
         Ok(if self.selected {
-            let mut pos = Position(self.selecting_i);
+            let mut pos = Position(self.buffer.len() - 1 - self.selecting_i);
             Some(self.buffer.next(&mut pos).unwrap().1)
         } else {
             None
