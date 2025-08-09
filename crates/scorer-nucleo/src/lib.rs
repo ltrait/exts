@@ -1,3 +1,40 @@
+//! # Example usage
+//! ```rust
+//! # use ltrait::{color_eyre::Result, Launcher};
+//! # use std::time::Duration;
+//! #
+//! # struct DummyUI;
+//! #
+//! # impl<'a> ltrait::UI<'a> for DummyUI {
+//! #     type Context = ();
+//! #
+//! #     async fn run<Cushion: 'a + Send>(
+//! #         &self,
+//! #         _: ltrait::launcher::batcher::Batcher<'a, Cushion, Self::Context>,
+//! #     ) -> Result<Option<Cushion>> {
+//! #         unimplemented!()
+//! #     }
+//! # }
+//! #
+//! # fn main() -> Result<()> {
+//! #
+//! use ltrait_extra::scorer::ScorerExt as _;
+//! use ltrait_scorer_nucleo::{CaseMatching, Normalization};
+//!
+//! let launcher = Launcher::default()
+//!     .set_ui(DummyUI, |c| unimplemented!())
+//!     .add_raw_sorter(
+//!         ltrait_scorer_nucleo::NucleoMatcher::new(
+//!             false,
+//!             CaseMatching::Smart,
+//!             Normalization::Smart,
+//!         )
+//!         .into_sorter()
+//!     );
+//! #
+//! # Ok(()) }
+//! ```
+
 use std::sync::{Arc, Mutex};
 
 use ltrait_extra::scorer::Scorer;
