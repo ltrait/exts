@@ -1,5 +1,5 @@
 use ltrait::{
-    color_eyre::eyre::{OptionExt, Result, WrapErr, bail},
+    color_eyre::eyre::{bail, OptionExt, Result, WrapErr},
     launcher::batcher::Batcher,
     tokio_stream::StreamExt as _,
     ui::{Buffer, Position, UI},
@@ -11,18 +11,18 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
-    Frame, Terminal, TerminalOptions,
     layout::{Constraint, Direction, Layout},
     prelude::{Backend, CrosstermBackend},
     style::Style,
     widgets::{Block, Borders, Clear, List, Paragraph, Widget},
+    Frame, Terminal, TerminalOptions,
 };
 use tracing::{debug, info};
-use tui_input::{Input, backend::crossterm::EventHandler};
+use tui_input::{backend::crossterm::EventHandler, Input};
 
-pub use ratatui::{Viewport, style};
+pub use ratatui::{style, Viewport};
 
-use futures::{FutureExt as _, join, select};
+use futures::{join, select, FutureExt as _};
 use tokio::sync::mpsc;
 
 use std::{io::Write, sync::RwLock};
@@ -428,8 +428,6 @@ where
                 .skip(start_index)
                 .take(end_index - start_index)
                 .collect();
-
-            items.reverse();
 
             List::new(items)
                 .block(Block::default())
