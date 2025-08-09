@@ -1,3 +1,38 @@
+//! # Example Usage
+//! ```rust
+//! # use ltrait::{color_eyre::Result, Launcher};
+//!
+//! # struct DummyUI;
+//! #
+//! # impl<'a> ltrait::UI<'a> for DummyUI {
+//! #     type Context = ();
+//! #
+//! #     async fn run<Cushion: 'a + Send>(
+//! #         &self,
+//! #         _: ltrait::launcher::batcher::Batcher<'a, Cushion, Self::Context>,
+//! #     ) -> Result<Option<Cushion>> {
+//! #         unimplemented!()
+//! #     }
+//! # }
+//! #
+//! # fn main() -> Result<()> {
+//! #
+//! use ltrait_gen_calc::{Calc, CalcConfig};
+//!
+//! let launcher = Launcher::default()
+//!     .set_ui(DummyUI, |c| unimplemented!())
+//!     .add_raw_generator(
+//!         Calc::new(CalcConfig::new(
+//!             (Some('k'), None), // default evaltor is is numbat. if prefix is k, use kalk
+//!             None,
+//!             None, // kalk precision, use default(53)
+//!             None,
+//!         )),
+//!     );
+//! #
+//! # Ok(()) }
+//! ```
+
 use ltrait::{async_trait::async_trait, generator::Generator};
 use std::fs::File;
 use std::io::Read;
@@ -91,7 +126,7 @@ impl Calc {
     }
 
     fn numbat(&self, input: &str) -> Result<String, Box<dyn std::error::Error>> {
-        use numbat::{Context, module_importer::BuiltinModuleImporter, resolver::CodeSource};
+        use numbat::{module_importer::BuiltinModuleImporter, resolver::CodeSource, Context};
 
         let mut ctx = Context::new(BuiltinModuleImporter::default());
 
@@ -157,7 +192,7 @@ impl Generator for Calc {
 mod tests {
     use crate::Calc;
 
-    use super::{Type, parse};
+    use super::{parse, Type};
 
     #[test]
     fn test_parse() -> Result<(), Box<dyn std::error::Error>> {
