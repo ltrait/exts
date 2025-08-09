@@ -1,9 +1,23 @@
 [package]
 name = "ltrait-gen-calc"
 version = "0.1.0"
-edition = "2024"
+
+edition.workspace = true
+
+description = "Calculator in LTrait"
+
+authors.workspace = true
+
+documentation = "https://docs.rs/ltrait-gen-calc/"
+homepage = "https://crates.io/crates/ltrait-gen-calc"
+repository.workspace = true
+
+exclude.workspace = true
+license.workspace = true
+publish = true
 
 [dependencies]
+ltrait = { workspace = true }
+
 kalk = "3.2.1"
-ltrait = "1.0.0"
 numbat = "1.16.0"
