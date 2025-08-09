@@ -423,11 +423,13 @@ where
             let start_index = scroll_offset;
             let end_index = (scroll_offset + visible_height).min(items_count);
 
-            let items: Vec<_> = items
+            let mut items: Vec<_> = items
                 .into_iter()
                 .skip(start_index)
                 .take(end_index - start_index)
                 .collect();
+
+            items.reverse();
 
             List::new(items)
                 .block(Block::default())
