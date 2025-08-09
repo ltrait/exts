@@ -1,3 +1,37 @@
+//! # Example Usage
+//! ```rust
+//! # use ltrait::{color_eyre::Result, Launcher, filter::ClosureFilter};
+//! # use std::time::Duration;
+//! #
+//! # struct DummyUI;
+//! #
+//! # impl<'a> ltrait::UI<'a> for DummyUI {
+//! #     type Context = ();
+//! #
+//! #     async fn run<Cushion: 'a + Send>(
+//! #         &self,
+//! #         _: ltrait::launcher::batcher::Batcher<'a, Cushion, Self::Context>,
+//! #     ) -> Result<Option<Cushion>> {
+//! #         unimplemented!()
+//! #     }
+//! # }
+//! #
+//! # fn main() -> Result<()> {
+//! #
+//! use ltrait_source_desktop::{default_paths, DesktopEntry};
+//!
+//! let launcher = Launcher::default()
+//!     .set_ui(DummyUI, |c| unimplemented!())
+//!     .add_raw_source(
+//!         ltrait_source_desktop::new(default_paths())?,
+//!     )
+//!    .add_raw_filter(ClosureFilter::new(|d: &DesktopEntry, _| {
+//!        !d.entry.no_display() && d.entry.exec().is_some()
+//!    }));
+//! #
+//! # Ok(()) }
+//! ```
+
 use ltrait::{source::Source, tokio_stream};
 use std::path::PathBuf;
 
