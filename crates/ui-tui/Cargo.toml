@@ -10,7 +10,7 @@ authors.workspace = true
 
 documentation = "https://docs.rs/ltrait-ui-tui/"
 homepage = "https://crates.io/crates/ltrait-ui-tui"
-repository = "https://github.com/ltrait/exts"
+repository.workspace = true
 
 exclude.workspace = true
 

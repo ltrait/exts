@@ -1,10 +1,26 @@
 [package]
 name = "ltrait-sorter-frecency"
 version = "0.1.0"
-edition = "2024"
+
+edition.workspace = true
+
+description = "Frecency algorithm for ltrait"
+
+authors.workspace = true
+
+documentation = "https://docs.rs/ltrait-sorter-frecency/"
+homepage = "https://crates.io/crates/ltrait-sorter-frecency"
+repository.workspace = true
+
+exclude.workspace = true
+license.workspace = true
+
+publish = true
+
 
 [dependencies]
+ltrait = { workspace = true }
+
 chrono = "0.4.40"
 dirs = "6.0.0"
-ltrait = "1.0.0"
-rusqlite = { version = "0.36.0", features = ["chrono", "bundled"] }
+rusqlite = { version = "0.37.0", features = ["chrono", "bundled"] }
