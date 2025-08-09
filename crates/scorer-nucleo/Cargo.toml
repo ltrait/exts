@@ -1,6 +1,6 @@
 [package]
 name = "ltrait-scorer-nucleo"
-version = "0.2.0"
+version = "0.3.0"
 edition.workspace = true
 
 description = "A scorer(using ltrait-extra) for ltrait"
@@ -17,7 +17,7 @@ license.workspace = true
 
 [dependencies]
 ltrait = { workspace = true }
-ltrait-extra = "0.1.0"
+ltrait-extra = "0.2.0"
 
 nucleo-matcher = "0.3.1"
 
