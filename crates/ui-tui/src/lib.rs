@@ -392,7 +392,7 @@ where
             let mut pos = Position::default();
 
             while let Some((entry, _)) = self.buffer.next(&mut pos) {
-                let is_selected = pos.0 - 1 == self.selecting_i;
+                let is_selected = pos.0 - 1 == items_count - self.selecting_i - 1;
 
                 let selecting_status = if is_selected {
                     self.config.selecting
@@ -407,14 +407,13 @@ where
                 items.push(ratatui::widgets::ListItem::new(entry_text).style(style));
             }
 
-            items.reverse();
-
             let visible_height = list_area.height as usize;
             let reversed_selecting_index = items_count - 1 - self.selecting_i;
 
             // 選択されたアイテムが常に表示されるようにスクロール位置を計算
             let margin_below = 2;
-            let scroll_offset = reversed_selecting_index.saturating_sub(visible_height - margin_below - 1);
+            let scroll_offset =
+                reversed_selecting_index.saturating_sub(visible_height - margin_below - 1);
 
             let start_index = scroll_offset;
             let end_index = (scroll_offset + visible_height).min(items_count);
