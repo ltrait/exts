@@ -56,7 +56,7 @@ pub struct DesktopEntry {
 }
 
 impl DesktopEntry {
-    pub fn icon(&self) -> Option<String> {
+    pub fn icon(&self) -> Option<PathBuf> {
         self.entry.icon().and_then(|n| icon::lookup(n).ok())
     }
 }
