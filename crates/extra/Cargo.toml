@@ -1,6 +1,6 @@
 [package]
 name = "ltrait-extra"
-version = "0.2.0"
+version = "0.3.0"
 edition.workspace = true
 
 description = "Extra components and helpers for LTrait"
@@ -15,4 +15,4 @@ exclude.workspace = true
 license.workspace = true
 
 [dependencies]
-ltrait = { workspace = true }
+ltrait.workspace = true

@@ -16,7 +16,7 @@ exclude.workspace = true
 license.workspace = true
 
 [dependencies]
-ltrait = { workspace = true }
+ltrait.workspace = true
 ltrait-extra = "0.2.0"
 
 nucleo-matcher = "0.3.1"
