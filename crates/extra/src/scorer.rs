@@ -4,19 +4,17 @@ pub trait Scorer {
     fn predicate_score(&self, ctx: &Self::Context, input: &str) -> u32;
 }
 
-impl<'a, T> ScorerExt<'a> for T where T: Scorer + Sized + Send + 'a {}
+impl<T> ScorerExt for T where T: Scorer + Sized + Send {}
 
-pub trait ScorerExt<'a>: Scorer + Sized + Send + 'a {
-    fn into_sorter(self) -> impl Sorter<'a, Context = Self::Context>
-    where
-        <Self as Scorer>::Context: 'a,
-    {
+pub trait ScorerExt: Scorer + Sized + Send {
+    fn into_sorter(self) -> impl Sorter<Context = Self::Context>
+where {
         ScorerSorter(self)
     }
 
-    fn into_filter<F>(self, predicate: F) -> impl Filter<'a, Context = Self::Context>
+    fn into_filter<F>(self, predicate: F) -> impl Filter<Context = Self::Context>
     where
-        F: Fn(u32) -> bool + Send + 'a,
+        F: Fn(u32) -> bool + Send,
     {
         ScorerFilter(self, predicate)
     }
@@ -38,10 +36,9 @@ where
     }
 }
 
-impl<'a, C, T> Sorter<'a> for ScorerSorter<C, T>
+impl<C, T> Sorter for ScorerSorter<C, T>
 where
-    T: Scorer<Context = C> + Send + 'a,
-    C: 'a,
+    T: Scorer<Context = C> + Send,
 {
     type Context = C;
 
@@ -67,11 +64,10 @@ where
     }
 }
 
-impl<'a, C, T, F> Filter<'a> for ScorerFilter<C, T, F>
+impl<C, T, F> Filter for ScorerFilter<C, T, F>
 where
-    T: Scorer<Context = C> + Send + 'a,
-    F: Fn(u32) -> bool + Send + 'a,
-    C: 'a,
+    T: Scorer<Context = C> + Send,
+    F: Fn(u32) -> bool + Send,
 {
     type Context = C;
 

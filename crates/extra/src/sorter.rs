@@ -1,55 +1,51 @@
-use ltrait::{sorter::SorterWrapper, Sorter};
+use ltrait::{Sorter, sorter::SorterWrapper};
 use std::marker::PhantomData;
 
-pub struct SorterIf<'a, T, Cusion, F>
-where
-    T: Sorter<'a, Context = Cusion>,
-    F: Fn(&Cusion) -> bool + Send + 'a,
-    Cusion: Sync,
-{
-    sorter: T,
+impl<T> SorterExt for T where T: Sorter {}
 
-    f: F,
-
-    _ctx: PhantomData<&'a Cusion>,
-}
-
-impl<'a, T> SorterExt<'a> for T where T: Sorter<'a> {}
-
-pub trait SorterExt<'a>: Sorter<'a> {
-    fn to_if<Cusion, F, TransF>(
-        self,
-        f: F,
-        transformer: TransF,
-    ) -> impl Sorter<'a, Context = Cusion>
+pub trait SorterExt: Sorter {
+    fn to_if<Cushion, F, TransF>(self, f: F, transformer: TransF) -> impl Sorter<Context = Cushion>
     // Wrapもされる
     where
         Self: Sized,
-        Cusion: Sync + Send + 'a,
-        F: Fn(&Cusion) -> bool + Send + 'a,
-        TransF: Fn(&Cusion) -> <Self as Sorter<'a>>::Context + Send + 'a,
-        <Self as Sorter<'a>>::Context: Sync,
+        Cushion: Sync + Send,
+        F: Fn(&Cushion) -> bool + Send,
+        TransF: Fn(&Cushion) -> <Self as Sorter>::Context + Send,
+        <Self as Sorter>::Context: Sync + Send,
     {
         SorterIf::new(self, f, transformer)
     }
 
-    fn reverse(self) -> impl Sorter<'a, Context = <Self as Sorter<'a>>::Context>
+    fn reverse(self) -> impl Sorter<Context = <Self as Sorter>::Context>
     where
         Self: Sized,
-        <Self as Sorter<'a>>::Context: Sync,
+        <Self as Sorter>::Context: Sync + Send,
     {
         ReversedSorter::new(self)
     }
 }
 
-impl<'a, Cusion, F, InnerT, TransF, Ctx>
-    SorterIf<'a, SorterWrapper<'a, Ctx, InnerT, TransF, Cusion>, Cusion, F>
+pub struct SorterIf<T, Cushion, F>
 where
-    F: Fn(&Cusion) -> bool + Send,
-    Cusion: Sync + Send,
-    InnerT: Sorter<'a, Context = Ctx>,
-    TransF: Fn(&Cusion) -> Ctx + Send,
-    Ctx: Sync,
+    T: Sorter<Context = Cushion>,
+    F: Fn(&Cushion) -> bool + Send,
+    Cushion: Sync,
+{
+    sorter: T,
+
+    f: F,
+
+    _ctx: PhantomData<Cushion>,
+}
+
+impl<Cushion, F, InnerT, TransF, Ctx>
+    SorterIf<SorterWrapper<Ctx, InnerT, TransF, Cushion>, Cushion, F>
+where
+    F: Fn(&Cushion) -> bool + Send,
+    Cushion: Sync + Send,
+    InnerT: Sorter<Context = Ctx>,
+    TransF: Fn(&Cushion) -> Ctx + Send,
+    Ctx: Sync + Send,
 {
     pub fn new(sorter: InnerT, f: F, transformer: TransF) -> Self {
         Self {
@@ -60,11 +56,11 @@ where
     }
 }
 
-impl<'a, T, Ctx, F> Sorter<'a> for SorterIf<'a, T, Ctx, F>
+impl<T, Ctx, F> Sorter for SorterIf<T, Ctx, F>
 where
-    T: Sorter<'a, Context = Ctx>,
-    F: Fn(&Ctx) -> bool + Send + 'a,
-    Ctx: Sync,
+    T: Sorter<Context = Ctx>,
+    F: Fn(&Ctx) -> bool + Send,
+    Ctx: Sync + Send,
 {
     type Context = Ctx;
 
@@ -77,19 +73,19 @@ where
     }
 }
 
-pub struct ReversedSorter<'a, T, Ctx>
+pub struct ReversedSorter<T, Ctx>
 where
-    T: Sorter<'a, Context = Ctx>,
+    T: Sorter<Context = Ctx>,
     Ctx: Sync,
 {
     sorter: T,
 
-    _ctx: PhantomData<&'a Ctx>,
+    _ctx: PhantomData<Ctx>,
 }
 
-impl<'a, T, Ctx> ReversedSorter<'a, T, Ctx>
+impl<T, Ctx> ReversedSorter<T, Ctx>
 where
-    T: Sorter<'a, Context = Ctx>,
+    T: Sorter<Context = Ctx>,
     Ctx: Sync,
 {
     pub fn new(sorter: T) -> Self {
@@ -100,10 +96,10 @@ where
     }
 }
 
-impl<'a, T, Ctx> Sorter<'a> for ReversedSorter<'a, T, Ctx>
+impl<T, Ctx> Sorter for ReversedSorter<T, Ctx>
 where
-    T: Sorter<'a, Context = Ctx>,
-    Ctx: Sync,
+    T: Sorter<Context = Ctx>,
+    Ctx: Sync + Send,
 {
     type Context = Ctx;
 

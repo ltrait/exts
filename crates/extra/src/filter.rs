@@ -1,69 +1,59 @@
-use ltrait::{filter::FilterWrapper, Filter};
+use ltrait::{Filter, filter::FilterWrapper};
 use std::marker::PhantomData;
 
-impl<'a, T> FilterExt<'a> for T where T: Filter<'a> {}
+impl<T> FilterExt for T
+where
+    T: FilterExt,
+    <T as ltrait::Filter>::Context: Sync + Send,
+{
+}
 
-pub trait FilterExt<'a>: Filter<'a> {
-    fn to_if<Cusion, F, TransF>(
-        self,
-        f: F,
-        transformer: TransF,
-    ) -> impl Filter<'a, Context = Cusion>
+pub trait FilterExt: Filter + Sized
+where
+    <Self as Filter>::Context: Sync + Send,
+{
+    fn to_if<Cushion, F, TransF>(self, f: F, transformer: TransF) -> impl Filter<Context = Cushion>
     // Wrapもされる
     where
         Self: Sized,
-        Cusion: Sync + Send + 'a,
-        F: Fn(&Cusion) -> bool + Send + 'a,
-        TransF: Fn(&Cusion) -> <Self as Filter<'a>>::Context + Send + 'a,
-        <Self as Filter<'a>>::Context: Sync,
+        Cushion: Sync + Send,
+        F: Fn(&Cushion) -> bool + Send,
+        TransF: Fn(&Cushion) -> <Self as Filter>::Context + Send,
     {
         FilterIf::new(self, f, transformer)
     }
 
-    fn reverse(self) -> impl Filter<'a, Context = <Self as Filter<'a>>::Context>
-    where
-        Self: Sized,
-        <Self as Filter<'a>>::Context: Sync,
-    {
+    fn reverse(self) -> impl Filter<Context = <Self as Filter>::Context> {
         ReversedFilter::new(self)
     }
 
-    fn comb<Cusion, T, Ctx, F1, F2, F3>(
+    fn comb<Cushion, T, Ctx, F1, F2, F3>(
         self,
         transformer1: F1,
         filter2: T,
         transformer2: F2,
         predicater: F3,
-    ) -> impl Filter<'a, Context = Cusion>
+    ) -> impl Filter<Context = Cushion>
     where
         Self: Sized,
-
-        T: Filter<'a, Context = Ctx>,
-
-        F1: Fn(&Cusion) -> <Self as Filter<'a>>::Context + Send + 'a,
-        F2: Fn(&Cusion) -> Ctx + Send + 'a,
-        F3: Fn(bool, bool) -> bool + Send + 'a,
-
-        Cusion: Sync + 'a,
-        Ctx: 'a,
+        T: Filter<Context = Ctx>,
+        F1: Fn(&Cushion) -> <Self as Filter>::Context + Send,
+        F2: Fn(&Cushion) -> Ctx + Send,
+        F3: Fn(bool, bool) -> bool + Send,
+        Cushion: Sync + Send,
     {
         FilterComb::new(self, transformer1, filter2, transformer2, predicater)
     }
 }
 
-pub struct FilterComb<'a, Cusion, T1, T2, C1, C2, F1, F2, F3>
+pub struct FilterComb<Cushion, T1, T2, C1, C2, F1, F2, F3>
 where
-    F1: Fn(&Cusion) -> C1 + Send + 'a,
-    F2: Fn(&Cusion) -> C2 + Send + 'a,
-    F3: Fn(bool, bool) -> bool + Send + 'a,
-
-    T1: Filter<'a, Context = C1>,
-    T2: Filter<'a, Context = C2>,
-
-    C1: 'a,
-    C2: 'a,
-
-    Cusion: Sync,
+    F1: Fn(&Cushion) -> C1 + Send,
+    F2: Fn(&Cushion) -> C2 + Send,
+    F3: Fn(bool, bool) -> bool + Send,
+    T1: Filter<Context = C1>,
+    T2: Filter<Context = C2>,
+    Cushion: Sync,
 {
     filter1: T1,
     filter2: T2,
@@ -73,25 +63,19 @@ where
 
     predicater: F3,
 
-    _cusion: PhantomData<&'a Cusion>,
+    _cushion: PhantomData<Cushion>,
 }
 
-impl<'a, Cusion, T1, T2, C1, C2, F1, F2, F3> Filter<'a>
-    for FilterComb<'a, Cusion, T1, T2, C1, C2, F1, F2, F3>
+impl<Cushion, T1, T2, C1, C2, F1, F2, F3> Filter for FilterComb<Cushion, T1, T2, C1, C2, F1, F2, F3>
 where
-    F1: Fn(&Cusion) -> C1 + Send + 'a,
-    F2: Fn(&Cusion) -> C2 + Send + 'a,
-    F3: Fn(bool, bool) -> bool + Send + 'a,
-
-    T1: Filter<'a, Context = C1>,
-    T2: Filter<'a, Context = C2>,
-
-    C1: 'a,
-    C2: 'a,
-
-    Cusion: Sync,
+    F1: Fn(&Cushion) -> C1 + Send,
+    F2: Fn(&Cushion) -> C2 + Send,
+    F3: Fn(bool, bool) -> bool + Send,
+    T1: Filter<Context = C1>,
+    T2: Filter<Context = C2>,
+    Cushion: Sync + Send,
 {
-    type Context = Cusion;
+    type Context = Cushion;
 
     fn predicate(&self, ctx: &Self::Context, input: &str) -> bool {
         (self.predicater)(
@@ -101,19 +85,14 @@ where
     }
 }
 
-impl<'a, Cusion, T1, T2, C1, C2, F1, F2, F3> FilterComb<'a, Cusion, T1, T2, C1, C2, F1, F2, F3>
+impl<Cushion, T1, T2, C1, C2, F1, F2, F3> FilterComb<Cushion, T1, T2, C1, C2, F1, F2, F3>
 where
-    F1: Fn(&Cusion) -> C1 + Send + 'a,
-    F2: Fn(&Cusion) -> C2 + Send + 'a,
-    F3: Fn(bool, bool) -> bool + Send + 'a,
-
-    T1: Filter<'a, Context = C1>,
-    T2: Filter<'a, Context = C2>,
-
-    C1: 'a,
-    C2: 'a,
-
-    Cusion: Sync,
+    F1: Fn(&Cushion) -> C1 + Send,
+    F2: Fn(&Cushion) -> C2 + Send,
+    F3: Fn(bool, bool) -> bool + Send,
+    T1: Filter<Context = C1>,
+    T2: Filter<Context = C2>,
+    Cushion: Sync,
 {
     pub fn new(
         filter1: T1,
@@ -128,32 +107,32 @@ where
             transformer1,
             transformer2,
             predicater,
-            _cusion: PhantomData,
+            _cushion: PhantomData,
         }
     }
 }
 
-pub struct FilterIf<'a, T, Ctx, F>
+pub struct FilterIf<T, Ctx, F>
 where
-    T: Filter<'a, Context = Ctx>,
-    F: Fn(&Ctx) -> bool + Send + 'a,
+    T: Filter<Context = Ctx>,
+    F: Fn(&Ctx) -> bool + Send,
     Ctx: Sync,
 {
     filter: T,
 
     f: F,
 
-    _ctx: PhantomData<&'a Ctx>,
+    _ctx: PhantomData<Ctx>,
 }
 
-impl<'a, Cusion, F, InnerF, TransF, Ctx>
-    FilterIf<'a, FilterWrapper<'a, Ctx, InnerF, TransF, Cusion>, Cusion, F>
+impl<Cushion, F, InnerF, TransF, Ctx>
+    FilterIf<FilterWrapper<Ctx, InnerF, TransF, Cushion>, Cushion, F>
 where
-    F: Fn(&Cusion) -> bool + Send + 'a,
-    Cusion: Sync + Send,
-    TransF: Fn(&Cusion) -> Ctx + Send,
-    InnerF: Filter<'a, Context = Ctx>,
-    Ctx: Sync,
+    F: Fn(&Cushion) -> bool + Send,
+    Cushion: Sync + Send,
+    TransF: Fn(&Cushion) -> Ctx + Send,
+    InnerF: Filter<Context = Ctx>,
+    Ctx: Sync + Send,
 {
     pub fn new(filter: InnerF, f: F, transformer: TransF) -> Self {
         Self {
@@ -164,11 +143,11 @@ where
     }
 }
 
-impl<'a, T, Ctx, F> Filter<'a> for FilterIf<'a, T, Ctx, F>
+impl<T, Ctx, F> Filter for FilterIf<T, Ctx, F>
 where
-    T: Filter<'a, Context = Ctx>,
-    F: Fn(&Ctx) -> bool + Send + 'a,
-    Ctx: Sync,
+    T: Filter<Context = Ctx>,
+    F: Fn(&Ctx) -> bool + Send,
+    Ctx: Sync + Send,
 {
     type Context = Ctx;
 
@@ -181,19 +160,19 @@ where
     }
 }
 
-pub struct ReversedFilter<'a, T, Ctx>
+pub struct ReversedFilter<T, Ctx>
 where
-    T: Filter<'a, Context = Ctx>,
+    T: Filter<Context = Ctx>,
     Ctx: Sync,
 {
     filter: T,
 
-    _ctx: PhantomData<&'a Ctx>,
+    _ctx: PhantomData<Ctx>,
 }
 
-impl<'a, T, Ctx> ReversedFilter<'a, T, Ctx>
+impl<T, Ctx> ReversedFilter<T, Ctx>
 where
-    T: Filter<'a, Context = Ctx>,
+    T: Filter<Context = Ctx>,
     Ctx: Sync,
 {
     pub fn new(filter: T) -> Self {
@@ -204,10 +183,10 @@ where
     }
 }
 
-impl<'a, T, Ctx> Filter<'a> for ReversedFilter<'a, T, Ctx>
+impl<T, Ctx> Filter for ReversedFilter<T, Ctx>
 where
-    T: Filter<'a, Context = Ctx>,
-    Ctx: Sync,
+    T: Filter<Context = Ctx>,
+    Ctx: Sync + Send,
 {
     type Context = Ctx;
 
