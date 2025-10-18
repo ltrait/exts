@@ -1,5 +1,5 @@
 use ltrait::{
-    color_eyre::eyre::{bail, OptionExt, Result, WrapErr},
+    color_eyre::eyre::{OptionExt, Result, WrapErr, bail},
     launcher::batcher::Batcher,
     tokio_stream::StreamExt as _,
     ui::{Buffer, Position, UI},
@@ -11,18 +11,18 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
+    Frame, Terminal, TerminalOptions,
     layout::{Constraint, Direction, Layout},
     prelude::{Backend, CrosstermBackend},
     style::Style,
     widgets::{Block, Borders, Clear, List, Paragraph, Widget},
-    Frame, Terminal, TerminalOptions,
 };
 use tracing::{debug, info};
-use tui_input::{backend::crossterm::EventHandler, Input};
+use tui_input::{Input, backend::crossterm::EventHandler};
 
-pub use ratatui::{style, Viewport};
+pub use ratatui::{Viewport, style};
 
-use futures::{join, select, FutureExt as _};
+use futures::{FutureExt as _, select};
 use tokio::sync::mpsc;
 
 use std::{io::Write, sync::RwLock};
@@ -34,15 +34,15 @@ where
     config: TuiConfig<F>,
 }
 
-impl<'a, F> UI<'a> for Tui<F>
+impl<F> UI for Tui<F>
 where
     F: Fn(&KeyEvent) -> Action + Send + Sync + Clone,
 {
     type Context = TuiEntry;
 
-    async fn run<Cusion: 'a + Send>(
+    async fn run<Cusion: Send>(
         &self,
-        mut batcher: Batcher<'a, Cusion, Self::Context>,
+        mut batcher: Batcher<Cusion, Self::Context>,
     ) -> Result<Option<Cusion>> {
         let writer: Box<dyn Write + Send> = if self.config.use_tty {
             let tty = std::fs::OpenOptions::new()
@@ -72,7 +72,7 @@ where
         self.exit(&mut terminal)?;
 
         Ok(if let Some(id) = i? {
-            Some(batcher.compute_cusion(id)?)
+            Some(batcher.compute_cushion(id)?)
         } else {
             None
         })
@@ -215,23 +215,22 @@ impl Event {
             let crossterm_event = reader.next().fuse();
             std::thread::sleep(std::time::Duration::from_millis(10));
 
-            if let Some(Ok(CEvent::Key(key))) = crossterm_event.await {
-                if key.kind == KeyEventKind::Press {
+            if let Some(Ok(CEvent::Key(key))) = crossterm_event.await
+                && key.kind == KeyEventKind::Press {
                     tx.send(Event::Key(key)).await.unwrap();
                 }
-            }
         }
     }
 }
 
-impl<'a, F> App<F>
+impl<F> App<F>
 where
     F: Fn(&KeyEvent) -> Action + Clone,
 {
-    async fn run<Cusion: Send + 'a, B: Backend>(
+    async fn run<Cusion: Send, B: Backend>(
         &mut self,
         terminal: &mut Terminal<B>,
-        batcher: &mut Batcher<'a, Cusion, TuiEntry>,
+        batcher: &mut Batcher<Cusion, TuiEntry>,
     ) -> Result<Option<usize>> {
         let (tx, mut rx) = mpsc::channel(100);
 
@@ -253,12 +252,12 @@ where
             select! {
                 // TODO: 毎回futureを生成し直していると
                 // dropした場合にバグるかも。あと必ず、rx.recvが早い場合何も表示されなくなっちゃうかも
-                from = prepare.fuse() => {
+                from = prepare.fuse( ) => {
                     info!("Merging");
-                    let (has_more, _) = join!(
-                        batcher.merge(&mut self.buffer, from),
-                        tx.send(Event::Refresh),
-                    );
+                    let has_more  =
+                        batcher.merge(&mut self.buffer, from);
+
+                        let _ = tx.send(Event::Refresh).await;
 
                     self.has_more = has_more?;
                     info!("Merged");
@@ -296,10 +295,10 @@ where
         ))
     }
 
-    async fn handle_events<Cusion: Send + 'a>(
+    async fn handle_events<Cusion: Send>(
         &mut self,
         event: Event,
-        batcher: &mut Batcher<'a, Cusion, TuiEntry>,
+        batcher: &mut Batcher<Cusion, TuiEntry>,
     ) -> Result<()> {
         match event {
             // it's important to check that the event is a key press event as
