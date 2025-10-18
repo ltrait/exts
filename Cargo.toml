@@ -12,4 +12,4 @@ rust-version = "1.88.0"
 exclude = [".envrc"]
 
 [workspace.dependencies]
-ltrait = "1.4.0"
+ltrait = "=1.5.0"

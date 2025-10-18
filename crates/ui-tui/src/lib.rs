@@ -34,16 +34,14 @@ where
     config: TuiConfig<F>,
 }
 
-impl<F> UI for Tui<F>
+impl<Cushion, F> UI<Cushion> for Tui<F>
 where
     F: Fn(&KeyEvent) -> Action + Send + Sync + Clone,
+    Cushion: Sync + Send + 'static,
 {
     type Context = TuiEntry;
 
-    async fn run<Cusion: Send>(
-        &self,
-        mut batcher: Batcher<Cusion, Self::Context>,
-    ) -> Result<Option<Cusion>> {
+    async fn run(&self, mut batcher: Batcher<Cushion, Self::Context>) -> Result<Option<Cushion>> {
         let writer: Box<dyn Write + Send> = if self.config.use_tty {
             let tty = std::fs::OpenOptions::new()
                 .read(true)
@@ -216,9 +214,10 @@ impl Event {
             std::thread::sleep(std::time::Duration::from_millis(10));
 
             if let Some(Ok(CEvent::Key(key))) = crossterm_event.await
-                && key.kind == KeyEventKind::Press {
-                    tx.send(Event::Key(key)).await.unwrap();
-                }
+                && key.kind == KeyEventKind::Press
+            {
+                tx.send(Event::Key(key)).await.unwrap();
+            }
         }
     }
 }
