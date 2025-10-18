@@ -50,7 +50,7 @@ use std::time::Duration;
 use chrono::{DateTime, Utc};
 use ltrait::color_eyre::eyre::{OptionExt, Result, WrapErr};
 use ltrait::{Action, Sorter};
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 
 /// The context of ltrait-sorter-frecency
 /// The `ident` must be unique within the same type_ident (if you want it to be judged as different)
@@ -145,7 +145,7 @@ impl Frecency {
     }
 }
 
-impl Sorter<'_> for Frecency {
+impl Sorter for Frecency {
     type Context = Context;
 
     fn compare(&self, lhs: &Self::Context, rhs: &Self::Context, _: &str) -> std::cmp::Ordering {
@@ -161,7 +161,7 @@ impl Sorter<'_> for Frecency {
     }
 }
 
-impl Action<'_> for Frecency {
+impl Action for Frecency {
     type Context = Context;
 
     fn act(&self, ctx: &Self::Context) -> Result<()> {
