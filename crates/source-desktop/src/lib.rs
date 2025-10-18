@@ -62,9 +62,7 @@ impl DesktopEntry {
 }
 
 // 楽をするためにfreedesktop_desktop_entryを使っているからStreamではなく、性能を最大限に活かしきれていない
-pub fn new<'a>(
-    paths: impl Iterator<Item = PathBuf>,
-) -> Result<Source<'a, DesktopEntry>, DesktopError> {
+pub fn new(paths: impl Iterator<Item = PathBuf>) -> Result<Source<DesktopEntry>, DesktopError> {
     use freedesktop_desktop_entry::Iter;
     let entries = Iter::new(paths)
         .entries::<String>(None)
