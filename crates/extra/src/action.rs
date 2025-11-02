@@ -1,5 +1,12 @@
 use ltrait::{Action, action::ActionWrapper};
 
+impl<T> ActionExt for T
+where
+    T: Action,
+    <T as Action>::Context: Sync + Send,
+{
+}
+
 pub trait ActionExt: Action
 where
     <Self as Action>::Context: Sync + Send,

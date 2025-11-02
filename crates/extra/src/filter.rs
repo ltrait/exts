@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 
 impl<T> FilterExt for T
 where
-    T: FilterExt,
-    <T as ltrait::Filter>::Context: Sync + Send,
+    T: Filter,
+    <T as Filter>::Context: Sync + Send,
 {
 }
 
